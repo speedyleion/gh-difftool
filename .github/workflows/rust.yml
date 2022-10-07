@@ -16,7 +16,31 @@ jobs:
 
     steps:
     - uses: actions/checkout@v3
+    - uses: r7kamura/rust-problem-matchers@v1
     - name: Build
       run: cargo build --verbose
     - name: Run tests
       run: cargo test --verbose
+
+  rust-lint:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v3
+    - uses: r7kamura/rust-problem-matchers@v1
+    - name: Run Format
+      run: cargo fmt --all -- --check
+    - name: Run clippy
+      run: cargo clippy --all --all-features -- -D warnings
+
+  markdown-lint:
+
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v3
+      - uses: xt0rted/markdownlint-problem-matcher@v1
+      - uses: DavidAnson/markdownlint-cli2-action@v7
+        with:
+          globs: "**/*.md"
