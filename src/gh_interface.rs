@@ -31,7 +31,6 @@ impl GhCli {
 
 mod tests {
     use super::*;
-    use assert_cmd::Command;
 
     #[test]
     fn no_current_pr() {
