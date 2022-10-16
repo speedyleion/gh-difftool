@@ -85,11 +85,11 @@ mod tests {
     #[test]
     fn no_current_pr() {
         let mut mock = MockC::new();
-        mock.expect_arg::<&str>().with(eq("pr"));
-        mock.expect_arg::<&str>().with(eq("diff"));
+        mock.expect_arg::<&str>().with(eq("pr")).returning(|_| {MockC::new()});
+        mock.expect_arg::<&str>().with(eq("diff")).returning(|_| {MockC::new()});
         // No good way to check for pipes
-        mock.expect_stdout().times(1);
-        mock.expect_stderr().times(1);
+        mock.expect_stdout().times(1).returning(|_| {MockC::new()});
+        mock.expect_stderr().times(1).returning(|_| {MockC::new()});
         mock.expect_output().returning(|| {
             Ok(Output {
                 status: ExitStatus::from_raw(1),
