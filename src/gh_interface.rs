@@ -10,23 +10,24 @@ use std::ffi::OsStr;
 use std::io;
 use std::process::Output;
 use std::process::Stdio;
+use mockall::automock;
 
-
-trait Cmd {
-    fn args<I: IntoIterator<Item = S>, S: AsRef<OsStr>>(&mut self, args: I) -> &mut Self;
-    fn stdout<T: Into<Stdio>>(&mut self, cfg: T) -> &mut Self;
-    fn stderr<T: Into<Stdio>>(&mut self, cfg: T) -> &mut Self;
+#[automock]
+pub trait Cmd {
+    fn arg<S: AsRef<OsStr> + 'static>(&mut self, arg: S) -> &mut Self;
+    fn stdout(&mut self, cfg: Stdio) -> &mut Self;
+    fn stderr(&mut self, cfg: Stdio) -> &mut Self;
     fn output(&mut self) -> io::Result<Output>;
 }
 
 impl Cmd for Command {
-    fn args<I: IntoIterator<Item = S>, S: AsRef<OsStr>>(&mut self, args: I) -> &mut Self {
-        self.args(args)
+    fn arg<S: AsRef<OsStr> + 'static>(&mut self, arg: S) -> &mut Self {
+        self.arg(arg)
     }
-    fn stdout<T: Into<Stdio>>(&mut self, cfg: T) -> &mut Self {
+    fn stdout(&mut self, cfg: Stdio) -> &mut Self {
         self.stdout(cfg)
     }
-    fn stderr<T: Into<Stdio>>(&mut self, cfg: T) -> &mut Self {
+    fn stderr(&mut self, cfg: Stdio) -> &mut Self {
         self.stderr(cfg)
     }
     fn output(&mut self) -> io::Result<Output> {
@@ -45,7 +46,7 @@ impl<C: Cmd> GhCli <C> {
     }
 
     pub fn diff(&mut self) -> Result<String, String> {
-        self.command.args(["pr", "diff"]);
+        self.command.arg("pr").arg("diff");
         self.command.stdout(Stdio::piped()).stderr(Stdio::piped());
         let output = self.command
             .output()
@@ -68,19 +69,23 @@ mod tests {
     use std::ffi::OsStr;
     use std::process::Output;
     use std::process::Stdio;
+    use mockall::predicate::{eq, in_iter};
 
-    mock! {
-        Command {
-            fn args<I: IntoIterator<Item = S> + 'static, S: AsRef<OsStr> + 'static>(&mut self, args: I) -> &mut Self;
-            fn stdout<T: Into<Stdio> + 'static>(&mut self, cfg: T) -> &mut Self;
-            fn stderr<T: Into<Stdio> + 'static>(&mut self, cfg: T) -> &mut Self;
-            fn output(&mut self) -> io::Result<Output>;
-        }
-    }
+    // mock! {
+    //     C {}
+    //     impl Cmd for C {
+    //         fn args<I: IntoIterator<Item = S> + 'static, S: AsRef<OsStr> + 'static>(&mut self, args: I) -> &mut Self;
+    //         fn stdout(&mut self, cfg: Stdio) -> &mut Self;
+    //         fn stderr(&mut self, cfg: Stdio) -> &mut Self;
+    //         fn output(&mut self) -> io::Result<Output>;
+    //     }
+    // }
 
     #[test]
     fn no_current_pr() {
-        let mut mock = MockCommand::new();
+        let mut mock = MockCmd::new();
+        mock.expect_arg::<&str>().with(eq("gh"))
+            .times(2);
         let mut gh = GhCli::new(mock);
         let message = gh.diff().err().unwrap();
         assert!(message.contains("no pull requests found for branch"));
