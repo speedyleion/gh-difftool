@@ -5,6 +5,9 @@
 
 //! Module for interacting with the github command line
 
+// Allowing dead code until this gets hooked up
+#![allow(dead_code)]
+
 use std::ffi::OsStr;
 use std::io;
 use std::process::Command;
