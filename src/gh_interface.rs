@@ -90,7 +90,7 @@ mod tests {
         mock.expect_stdout().times(1);
         mock.expect_stderr().times(1);
         mock.expect_output().returning(|| {
-            Ok(Output{ status: ExitStatus::from_raw(0), stdout: vec![], stderr: b"no pull requests found for branch".to_vec()})
+            Ok(Output{ status: ExitStatus::from_raw(1), stdout: vec![], stderr: b"no pull requests found for branch".to_vec()})
         });
 
         let mut gh = GhCli::new(mock);
