@@ -10,9 +10,7 @@ use std::ffi::OsStr;
 use std::io;
 use std::process::Output;
 use std::process::Stdio;
-use mockall::automock;
 
-#[automock]
 pub trait Cmd {
     fn arg<S: AsRef<OsStr> + 'static>(&mut self, arg: S) -> &mut Self;
     fn stdout(&mut self, cfg: Stdio) -> &mut Self;
@@ -46,8 +44,10 @@ impl<C: Cmd> GhCli <C> {
     }
 
     pub fn diff(&mut self) -> Result<String, String> {
-        self.command.arg("pr").arg("diff");
-        self.command.stdout(Stdio::piped()).stderr(Stdio::piped());
+        self.command.arg("pr");
+        // self.command.arg("pr").arg("diff");
+        self.command.stdout(Stdio::piped());
+        self.command.stderr(Stdio::piped());
         let output = self.command
             .output()
             .map_err(|e| format!("Failed running gh diff: {}", e))?;
@@ -63,29 +63,36 @@ impl<C: Cmd> GhCli <C> {
 }
 
 mod tests {
-    use std::fmt::Error;
     use super::*;
     use mockall::mock;
     use std::ffi::OsStr;
-    use std::process::Output;
+    use std::os::unix::prelude::ExitStatusExt;
+    use std::process::{ExitStatus, Output};
     use std::process::Stdio;
-    use mockall::predicate::{eq, in_iter};
+    use mockall::predicate::eq;
 
-    // mock! {
-    //     C {}
-    //     impl Cmd for C {
-    //         fn args<I: IntoIterator<Item = S> + 'static, S: AsRef<OsStr> + 'static>(&mut self, args: I) -> &mut Self;
-    //         fn stdout(&mut self, cfg: Stdio) -> &mut Self;
-    //         fn stderr(&mut self, cfg: Stdio) -> &mut Self;
-    //         fn output(&mut self) -> io::Result<Output>;
-    //     }
-    // }
+    mock! {
+        C {}
+        impl Cmd for C {
+            fn arg<S: AsRef<OsStr> + 'static>(&mut self, arg: S) -> &mut Self;
+            fn stdout(&mut self, cfg: Stdio) -> &mut Self;
+            fn stderr(&mut self, cfg: Stdio) -> &mut Self;
+            fn output(&mut self) -> io::Result<Output>;
+        }
+    }
 
     #[test]
     fn no_current_pr() {
-        let mut mock = MockCmd::new();
-        mock.expect_arg::<&str>().with(eq("gh"))
-            .times(2);
+        let mut mock = MockC::new();
+        mock.expect_arg::<&str>().with(eq("pr"));
+        mock.expect_arg::<&str>().with(eq("diff"));
+        // No good way to check for pipes
+        mock.expect_stdout().times(1);
+        mock.expect_stderr().times(1);
+        mock.expect_output().returning(|| {
+            Ok(Output{ status: ExitStatus::from_raw(0), stdout: vec![], stderr: b"no pull requests found for branch".to_vec()})
+        });
+
         let mut gh = GhCli::new(mock);
         let message = gh.diff().err().unwrap();
         assert!(message.contains("no pull requests found for branch"));
