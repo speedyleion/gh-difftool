@@ -63,6 +63,7 @@ impl<C: Cmd> GhCli<C> {
     }
 }
 
+#[cfg(test)]
 mod tests {
     use super::*;
     use mockall::mock;
