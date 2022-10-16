@@ -5,9 +5,9 @@
 
 //! Module for interacting with the github command line
 
-use std::process::Command;
 use std::ffi::OsStr;
 use std::io;
+use std::process::Command;
 use std::process::Output;
 use std::process::Stdio;
 
@@ -38,9 +38,9 @@ pub struct GhCli<C> {
     command: C,
 }
 
-impl<C: Cmd> GhCli <C> {
+impl<C: Cmd> GhCli<C> {
     pub fn new(command: C) -> Self {
-        Self{ command }
+        Self { command }
     }
 
     pub fn diff(&mut self) -> Result<String, String> {
@@ -48,7 +48,8 @@ impl<C: Cmd> GhCli <C> {
         // self.command.arg("pr").arg("diff");
         self.command.stdout(Stdio::piped());
         self.command.stderr(Stdio::piped());
-        let output = self.command
+        let output = self
+            .command
             .output()
             .map_err(|e| format!("Failed running gh diff: {}", e))?;
         let status = output.status;
@@ -65,11 +66,11 @@ impl<C: Cmd> GhCli <C> {
 mod tests {
     use super::*;
     use mockall::mock;
+    use mockall::predicate::eq;
     use std::ffi::OsStr;
     use std::os::unix::prelude::ExitStatusExt;
-    use std::process::{ExitStatus, Output};
     use std::process::Stdio;
-    use mockall::predicate::eq;
+    use std::process::{ExitStatus, Output};
 
     mock! {
         C {}
@@ -90,7 +91,11 @@ mod tests {
         mock.expect_stdout().times(1);
         mock.expect_stderr().times(1);
         mock.expect_output().returning(|| {
-            Ok(Output{ status: ExitStatus::from_raw(1), stdout: vec![], stderr: b"no pull requests found for branch".to_vec()})
+            Ok(Output {
+                status: ExitStatus::from_raw(1),
+                stdout: vec![],
+                stderr: b"no pull requests found for branch \"blah\"".to_vec(),
+            })
         });
 
         let mut gh = GhCli::new(mock);
