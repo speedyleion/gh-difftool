@@ -6,3 +6,7 @@ edition = "2021"
 [dev-dependencies]
 assert_cmd = "2.0.4"
 mockall = "0.11.2"
+textwrap = "0.15.1"
+
+[dependencies]
+patch = "0.6.0"
