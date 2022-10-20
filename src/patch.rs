@@ -9,7 +9,9 @@
 #![allow(dead_code)]
 
 use patch::{ParseError, Patch};
+use std::io::Write;
 use std::path::Path;
+use std::process::{Command, Stdio};
 
 pub trait ReverseApply {
     fn reverse_apply<P1, P2>(&self, src: P1, dest: P2) -> Result<(), ()>
@@ -19,11 +21,31 @@ pub trait ReverseApply {
 }
 
 impl<'a> ReverseApply for Patch<'a> {
-    fn reverse_apply<P1, P2>(&self, _src: P1, _dest: P2) -> Result<(), ()>
+    fn reverse_apply<P1, P2>(&self, src: P1, dest: P2) -> Result<(), ()>
     where
         P1: AsRef<Path>,
         P2: AsRef<Path>,
     {
+        let mut cmd = Command::new("patch");
+        cmd.args([
+            "-R",
+            &src.as_ref().to_string_lossy(),
+            "-o",
+            &dest.as_ref().to_string_lossy(),
+        ]);
+        cmd.stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped());
+        let mut child = cmd.spawn().unwrap();
+        let mut stdin = child.stdin.take().expect("failed to get stdin");
+
+        let contents = self.to_string();
+        std::thread::spawn(move || {
+            stdin
+                .write_all(contents.as_bytes())
+                .expect("failed to write to stdin");
+        });
+        child.wait_with_output().unwrap();
         Ok(())
     }
 }
@@ -42,6 +64,8 @@ impl<'a> PatchSet<'a> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs;
+    use temp_testdir::TempDir;
     use textwrap::dedent;
 
     #[test]
@@ -75,5 +99,44 @@ mod tests {
         assert_eq!(patches.patches[0].new.path, "b/file.1");
         assert_eq!(patches.patches[1].old.path, "/dev/null");
         assert_eq!(patches.patches[1].new.path, "b/path_2/file.2");
+    }
+
+    #[test]
+    fn reverse_apply() {
+        let temp = TempDir::default().permanent();
+        let a = temp.join("a");
+        let b = temp.join("b");
+        let original = dedent(
+            "
+            line one
+            line changed
+            line three
+            ",
+        );
+        fs::write(&a, original).unwrap();
+        let diff = dedent(
+            "
+            diff --git a/foo.txt b/foo.txt
+            index 0c2aa38..0370c84 100644
+            --- a/foo.txt
+            +++ b/foo.txt
+            @@ -1,3 +1,3 @@
+             line one
+            -line two
+            +line changed
+             line three
+            ",
+        );
+        let expected = dedent(
+            "
+            line one
+            line two
+            line three
+            ",
+        );
+        let patches = PatchSet::new(&diff).unwrap();
+        let patch = &patches.patches[0];
+        patch.reverse_apply(&a, &b).unwrap();
+        assert_eq!(fs::read(&b).unwrap(), expected.into_bytes());
     }
 }
