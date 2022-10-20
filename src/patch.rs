@@ -8,8 +8,10 @@
 // Allowing dead code until this gets hooked up
 #![allow(dead_code)]
 
+use std::io::Write;
 use patch::{ParseError, Patch};
 use std::path::Path;
+use std::process::{Command, Stdio};
 
 pub trait ReverseApply {
     fn reverse_apply<P1, P2>(&self, src: P1, dest: P2) -> Result<(), ()>
@@ -19,11 +21,18 @@ pub trait ReverseApply {
 }
 
 impl<'a> ReverseApply for Patch<'a> {
-    fn reverse_apply<P1, P2>(&self, _src: P1, _dest: P2) -> Result<(), ()>
+    fn reverse_apply<P1, P2>(&self, src: P1, dest: P2) -> Result<(), ()>
     where
         P1: AsRef<Path>,
         P2: AsRef<Path>,
     {
+        let mut cmd = Command::new("patch");
+        cmd.args(["-R", &src.as_ref().to_string_lossy(), "-o", &dest.as_ref().to_string_lossy()]);
+        cmd.stdin(Stdio::piped());
+        let mut child = cmd.spawn().unwrap();
+        let mut stdin = child.stdin.take().expect("failed to get stdin");
+        stdin.write_all(self.to_string().as_bytes()).expect("failed to write to stdin");
+        child.wait_with_output().unwrap();
         Ok(())
     }
 }
@@ -87,7 +96,7 @@ mod tests {
         let original = dedent(
             "
             line one
-            line two
+            line changed
             line three
             "
         );
@@ -108,7 +117,7 @@ mod tests {
         let expected = dedent(
             "
             line one
-            line changed
+            line two
             line three
             "
         );
