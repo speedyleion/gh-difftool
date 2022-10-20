@@ -28,10 +28,16 @@ impl<'a> ReverseApply for Patch<'a> {
     {
         let mut cmd = Command::new("patch");
         cmd.args(["-R", &src.as_ref().to_string_lossy(), "-o", &dest.as_ref().to_string_lossy()]);
-        cmd.stdin(Stdio::piped());
+        cmd.stdin(Stdio::piped()).stdout(Stdio::piped()).stderr(Stdio::piped());
         let mut child = cmd.spawn().unwrap();
         let mut stdin = child.stdin.take().expect("failed to get stdin");
-        stdin.write_all(self.to_string().as_bytes()).expect("failed to write to stdin");
+
+        let contents = self.to_string();
+        std::thread::spawn(move || {
+            stdin.write_all(contents.as_bytes()).expect("failed to write to stdin");
+            // stdin.write_all(b"what").expect("failed to write to stdin");
+            // stdin.write_all(b"test").expect("failed to write to stdin");
+        });
         child.wait_with_output().unwrap();
         Ok(())
     }
