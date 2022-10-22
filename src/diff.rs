@@ -5,9 +5,6 @@
 
 //! Launches a difftool to
 
-// Allowing dead code until this gets hooked up
-#![allow(dead_code)]
-
 use crate::cmd::Cmd;
 use std::ffi::OsStr;
 use std::process::Stdio;
@@ -22,27 +19,17 @@ impl<C: Cmd> Diff<C> {
         Self { command }
     }
 
-    pub fn launch<S1: AsRef<OsStr> + 'static, S2: AsRef<OsStr> + 'static>(
-        &mut self,
-        local: S1,
-        remote: S2,
-    ) -> Result<(), String> {
+    pub fn launch(&mut self, local: &OsStr, remote: &OsStr) -> Result<(), String> {
         self.command.arg(local);
         self.command.arg(remote);
         self.command.stdout(Stdio::piped());
         self.command.stderr(Stdio::piped());
-        let output = self
-            .command
+        self.command
             .output()
             .map_err(|e| format!("Failed launching difftool: {}", e))?;
-
-        let status = output.status;
-        if status.success() {
-            Ok(())
-        } else {
-            Err(String::from_utf8(output.stderr)
-                .map_err(|e| format!("Failed to convert error message: {}", e))?)
-        }
+        // Some difftools, like bcompare, will return non zero status when there is a diff and 0
+        // only when there are no changes.  This prevents us from trusting the status
+        Ok(())
     }
 }
 
@@ -60,7 +47,7 @@ mod tests {
     mock! {
         C {}
         impl Cmd for C {
-            fn arg<S: AsRef<OsStr> + 'static>(&mut self, arg: S) -> &mut Self;
+            fn arg(&mut self, arg: &OsStr) -> &mut Self;
             fn stdout(&mut self, cfg: Stdio) -> &mut Self;
             fn stderr(&mut self, cfg: Stdio) -> &mut Self;
             fn output(&mut self) -> io::Result<Output>;
@@ -69,14 +56,14 @@ mod tests {
 
     #[test]
     fn diff_launches_ok() {
-        let local = "foo/baz/bar";
-        let remote = "some/other/file";
+        let local = OsStr::new("foo/baz/bar");
+        let remote = OsStr::new("some/other/file");
         let mut mock = MockC::new();
-        mock.expect_arg::<&str>()
+        mock.expect_arg()
             .with(eq(local))
             .times(1)
             .returning(|_| MockC::new());
-        mock.expect_arg::<&str>()
+        mock.expect_arg()
             .with(eq(remote))
             .times(1)
             .returning(|_| MockC::new());
@@ -92,35 +79,5 @@ mod tests {
 
         let mut diff = Diff::new(mock);
         assert_eq!(diff.launch(local, remote), Ok(()));
-    }
-
-    #[test]
-    fn diff_fails_to_launch() {
-        let local = "foo/baz/bar";
-        let remote = "some/other/file";
-        let mut mock = MockC::new();
-        mock.expect_arg::<&str>()
-            .with(eq(local))
-            .times(1)
-            .returning(|_| MockC::new());
-        mock.expect_arg::<&str>()
-            .with(eq(remote))
-            .times(1)
-            .returning(|_| MockC::new());
-        mock.expect_stdout().times(1).returning(|_| MockC::new());
-        mock.expect_stderr().times(1).returning(|_| MockC::new());
-        mock.expect_output().times(1).returning(|| {
-            Ok(Output {
-                status: ExitStatus::from_raw(1),
-                stdout: vec![],
-                stderr: b"an error message".to_vec(),
-            })
-        });
-
-        let mut diff = Diff::new(mock);
-        assert_eq!(
-            diff.launch(local, remote),
-            Err(String::from("an error message"))
-        );
     }
 }
