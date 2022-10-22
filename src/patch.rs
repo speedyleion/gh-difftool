@@ -41,7 +41,13 @@ impl<'a> ReverseApply for Patch<'a> {
             .map_err(|e| format!("Failed to start `patch` process: {}", e))?;
         let mut stdin = child.stdin.take().expect("failed to get stdin for `patch`");
 
-        let contents = self.to_string();
+        let mut contents = self.to_string();
+
+        // Not sure how to force this in a minimum reproducible example.
+        // When using patch and deleting things close to the end of the file it seems that missing
+        // a newline at the end of the patch will cause it to fail. Always Adding a newline to the
+        // end never seems to be an issue.
+        contents.push('\n');
 
         // If one doesn't use a thread for writing stdin then it will block indefinitely
         std::thread::spawn(move || {
@@ -124,14 +130,14 @@ mod tests {
         let temp = TempDir::default().permanent();
         let a = temp.join("a");
         let b = temp.join("b");
-        let original = dedent(
+        let newest = dedent(
             "
             line one
             line changed
             line three
             ",
         );
-        fs::write(&a, original).unwrap();
+        fs::write(&b, newest).unwrap();
         let diff = dedent(
             "
             diff --git a/foo.txt b/foo.txt
@@ -154,8 +160,45 @@ mod tests {
         );
         let patches = PatchSet::new(&diff).unwrap();
         let patch = &patches.patches[0];
-        patch.reverse_apply(&a, &b).unwrap();
-        assert_eq!(fs::read(&b).unwrap(), expected.into_bytes());
+        patch.reverse_apply(&b, &a).unwrap();
+        assert_eq!(fs::read(&a).unwrap(), expected.into_bytes());
+    }
+
+    #[test]
+    fn only_deleting_lines() {
+        let temp = TempDir::default().permanent();
+        let a = temp.join("a");
+        let b = temp.join("b");
+        let newest = dedent(
+            "
+            line one
+            line two
+            line three
+            ",
+        );
+        fs::write(&b, newest).unwrap();
+        let diff = dedent(
+            "
+            diff --git a/foo.txt b/foo.txt
+            index 0c2aa38..0370c84 100644
+            --- a/foo.txt
+            +++ b/foo.txt
+            @@ -1,2 +1,3 @@
+             line one
+            +line two
+             line three
+            ",
+        );
+        let expected = dedent(
+            "
+            line one
+            line three
+            ",
+        );
+        let patches = PatchSet::new(&diff).unwrap();
+        let patch = &patches.patches[0];
+        patch.reverse_apply(&b, &a).unwrap();
+        assert_eq!(fs::read(&a).unwrap(), expected.into_bytes());
     }
 
     #[test]
@@ -163,11 +206,11 @@ mod tests {
         let temp = TempDir::default().permanent();
         let a = temp.join("a");
         let b = temp.join("b");
-        let original = dedent(
+        let newest = dedent(
             "
             ",
         );
-        fs::write(&a, original).unwrap();
+        fs::write(&b, newest).unwrap();
         let diff = dedent(
             "
             diff --git a/foo.txt b/foo.txt
@@ -182,9 +225,9 @@ mod tests {
         );
         let patches = PatchSet::new(&diff).unwrap();
         let patch = &patches.patches[0];
-        let message_start = format!("Failed to patch {:?} to {:?}: patch: **** malformed", a, b);
+        let message_start = format!("Failed to patch {:?} to {:?}: patch: **** malformed", b, a);
         assert!(
-            matches!(patch.reverse_apply(&a, &b), Err(message) if message.starts_with(&message_start))
+            matches!(patch.reverse_apply(&b, &a), Err(message) if message.starts_with(&message_start))
         );
     }
 }
