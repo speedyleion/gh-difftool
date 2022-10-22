@@ -14,7 +14,7 @@ use tempfile::NamedTempFile;
 #[command(author, version, about, long_about = None)]
 struct Cli {
     /// The difftool command to run
-    #[arg(short = 't', long, env = "GH_DIFFTOOL")]
+    #[arg(short = 't', long = "tool", env = "DIFFTOOL")]
     difftool: Option<String>,
 }
 
