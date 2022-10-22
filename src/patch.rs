@@ -14,14 +14,14 @@ use std::path::Path;
 use std::process::{Command, Stdio};
 
 pub trait ReverseApply {
-    fn reverse_apply<P1, P2>(&self, src: P1, dest: P2) -> Result<(), ()>
+    fn reverse_apply<P1, P2>(&self, src: P1, dest: P2) -> Result<(), String>
     where
         P1: AsRef<Path>,
         P2: AsRef<Path>;
 }
 
 impl<'a> ReverseApply for Patch<'a> {
-    fn reverse_apply<P1, P2>(&self, src: P1, dest: P2) -> Result<(), ()>
+    fn reverse_apply<P1, P2>(&self, src: P1, dest: P2) -> Result<(), String>
     where
         P1: AsRef<Path>,
         P2: AsRef<Path>,
@@ -36,17 +36,31 @@ impl<'a> ReverseApply for Patch<'a> {
         cmd.stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
-        let mut child = cmd.spawn().unwrap();
-        let mut stdin = child.stdin.take().expect("failed to get stdin");
+        let mut child = cmd
+            .spawn()
+            .map_err(|e| format!("Failed to start `patch` process: {}", e))?;
+        let mut stdin = child.stdin.take().expect("failed to get stdin for `patch`");
 
         let contents = self.to_string();
+
+        // If one doesn't use a thread for writing stdin then it will block indefinitely
         std::thread::spawn(move || {
             stdin
                 .write_all(contents.as_bytes())
-                .expect("failed to write to stdin");
+                .expect("Failed to write to stdin");
         });
-        child.wait_with_output().unwrap();
-        Ok(())
+
+        let output = child
+            .wait_with_output()
+            .map_err(|e| format!("Failed to run the `patch` process to finish: {}", e))?;
+
+        let status = output.status;
+        if status.success() {
+            Ok(())
+        } else {
+            Err(String::from_utf8(output.stderr)
+                .map_err(|e| format!("Failed to convert `patch` error message: {}", e))?)
+        }
     }
 }
 
@@ -138,5 +152,34 @@ mod tests {
         let patch = &patches.patches[0];
         patch.reverse_apply(&a, &b).unwrap();
         assert_eq!(fs::read(&b).unwrap(), expected.into_bytes());
+    }
+
+    #[test]
+    fn fail_to_apply() {
+        let temp = TempDir::default().permanent();
+        let a = temp.join("a");
+        let b = temp.join("b");
+        let original = dedent(
+            "
+            ",
+        );
+        fs::write(&a, original).unwrap();
+        let diff = dedent(
+            "
+            diff --git a/foo.txt b/foo.txt
+            index 0c2aa38..0370c84 100644
+            --- a/foo.txt
+            +++ b/foo.txt
+            @@ -1,3 +1,3 @@
+             line one
+            +line changed
+             line three
+            ",
+        );
+        let patches = PatchSet::new(&diff).unwrap();
+        let patch = &patches.patches[0];
+        assert!(
+            matches!(patch.reverse_apply(&a, &b), Err(message) if message.starts_with("patch: **** malformed"))
+        );
     }
 }
