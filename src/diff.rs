@@ -22,11 +22,7 @@ impl<C: Cmd> Diff<C> {
         Self { command }
     }
 
-    pub fn launch<S1: AsRef<OsStr> + 'static, S2: AsRef<OsStr> + 'static>(
-        &mut self,
-        local: S1,
-        remote: S2,
-    ) -> Result<(), String> {
+    pub fn launch(&mut self, local: &OsStr, remote: &OsStr) -> Result<(), String> {
         self.command.arg(local);
         self.command.arg(remote);
         self.command.stdout(Stdio::piped());
@@ -60,7 +56,7 @@ mod tests {
     mock! {
         C {}
         impl Cmd for C {
-            fn arg<S: AsRef<OsStr> + 'static>(&mut self, arg: S) -> &mut Self;
+            fn arg(&mut self, arg: &OsStr) -> &mut Self;
             fn stdout(&mut self, cfg: Stdio) -> &mut Self;
             fn stderr(&mut self, cfg: Stdio) -> &mut Self;
             fn output(&mut self) -> io::Result<Output>;
@@ -69,14 +65,14 @@ mod tests {
 
     #[test]
     fn diff_launches_ok() {
-        let local = "foo/baz/bar";
-        let remote = "some/other/file";
+        let local = OsStr::new("foo/baz/bar");
+        let remote = OsStr::new("some/other/file");
         let mut mock = MockC::new();
-        mock.expect_arg::<&str>()
+        mock.expect_arg()
             .with(eq(local))
             .times(1)
             .returning(|_| MockC::new());
-        mock.expect_arg::<&str>()
+        mock.expect_arg()
             .with(eq(remote))
             .times(1)
             .returning(|_| MockC::new());
@@ -96,14 +92,14 @@ mod tests {
 
     #[test]
     fn diff_fails_to_launch() {
-        let local = "foo/baz/bar";
-        let remote = "some/other/file";
+        let local = OsStr::new("foo/baz/bar");
+        let remote = OsStr::new("some/other/file");
         let mut mock = MockC::new();
-        mock.expect_arg::<&str>()
+        mock.expect_arg()
             .with(eq(local))
             .times(1)
             .returning(|_| MockC::new());
-        mock.expect_arg::<&str>()
+        mock.expect_arg()
             .with(eq(remote))
             .times(1)
             .returning(|_| MockC::new());

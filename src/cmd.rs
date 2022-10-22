@@ -12,14 +12,14 @@ use std::process::Output;
 use std::process::Stdio;
 
 pub trait Cmd {
-    fn arg<S: AsRef<OsStr> + 'static>(&mut self, arg: S) -> &mut Self;
+    fn arg(&mut self, arg: &OsStr) -> &mut Self;
     fn stdout(&mut self, cfg: Stdio) -> &mut Self;
     fn stderr(&mut self, cfg: Stdio) -> &mut Self;
     fn output(&mut self) -> io::Result<Output>;
 }
 
 impl Cmd for Command {
-    fn arg<S: AsRef<OsStr> + 'static>(&mut self, arg: S) -> &mut Self {
+    fn arg(&mut self, arg: &OsStr) -> &mut Self {
         self.arg(arg)
     }
     fn stdout(&mut self, cfg: Stdio) -> &mut Self {

@@ -58,14 +58,18 @@ impl<'a> ReverseApply for Patch<'a> {
         if status.success() {
             Ok(())
         } else {
-            Err(String::from_utf8(output.stderr)
-                .map_err(|e| format!("Failed to convert `patch` error message: {}", e))?)
+            Err(format!(
+                "Failed to patch {:?} to {:?}: {}",
+                src.as_ref(),
+                dest.as_ref(),
+                String::from_utf8_lossy(&output.stderr)
+            ))
         }
     }
 }
 
 pub struct PatchSet<'a> {
-    patches: Vec<Patch<'a>>,
+    pub patches: Vec<Patch<'a>>,
 }
 
 impl<'a> PatchSet<'a> {
@@ -178,8 +182,9 @@ mod tests {
         );
         let patches = PatchSet::new(&diff).unwrap();
         let patch = &patches.patches[0];
+        let message_start = format!("Failed to patch {:?} to {:?}: patch: **** malformed", a, b);
         assert!(
-            matches!(patch.reverse_apply(&a, &b), Err(message) if message.starts_with("patch: **** malformed"))
+            matches!(patch.reverse_apply(&a, &b), Err(message) if message.starts_with(&message_start))
         );
     }
 }

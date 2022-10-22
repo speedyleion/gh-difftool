@@ -9,6 +9,7 @@
 #![allow(dead_code)]
 
 use crate::cmd::Cmd;
+use std::ffi::OsStr;
 use std::process::Stdio;
 
 #[derive(Debug, Default)]
@@ -22,8 +23,8 @@ impl<C: Cmd> GhCli<C> {
     }
 
     pub fn diff(&mut self) -> Result<String, String> {
-        self.command.arg("pr");
-        self.command.arg("diff");
+        self.command.arg(OsStr::new("pr"));
+        self.command.arg(OsStr::new("diff"));
         self.command.stdout(Stdio::piped());
         self.command.stderr(Stdio::piped());
         let output = self
@@ -55,7 +56,7 @@ mod tests {
     mock! {
         C {}
         impl Cmd for C {
-            fn arg<S: AsRef<OsStr> + 'static>(&mut self, arg: S) -> &mut Self;
+            fn arg(&mut self, arg: &OsStr) -> &mut Self;
             fn stdout(&mut self, cfg: Stdio) -> &mut Self;
             fn stderr(&mut self, cfg: Stdio) -> &mut Self;
             fn output(&mut self) -> io::Result<Output>;
@@ -65,12 +66,12 @@ mod tests {
     #[test]
     fn no_current_pr() {
         let mut mock = MockC::new();
-        mock.expect_arg::<&str>()
-            .with(eq("pr"))
+        mock.expect_arg()
+            .with(eq(OsStr::new("pr")))
             .times(1)
             .returning(|_| MockC::new());
-        mock.expect_arg::<&str>()
-            .with(eq("diff"))
+        mock.expect_arg()
+            .with(eq(OsStr::new("diff")))
             .times(1)
             .returning(|_| MockC::new());
         // No good way to check for pipes
@@ -112,12 +113,12 @@ mod tests {
             +new stuff
         ";
         let mut mock = MockC::new();
-        mock.expect_arg::<&str>()
-            .with(eq("pr"))
+        mock.expect_arg()
+            .with(eq(OsStr::new("pr")))
             .times(1)
             .returning(|_| MockC::new());
-        mock.expect_arg::<&str>()
-            .with(eq("diff"))
+        mock.expect_arg()
+            .with(eq(OsStr::new("diff")))
             .times(1)
             .returning(|_| MockC::new());
         // No good way to check for pipes
