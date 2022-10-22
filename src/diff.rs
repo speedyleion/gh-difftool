@@ -27,18 +27,12 @@ impl<C: Cmd> Diff<C> {
         self.command.arg(remote);
         self.command.stdout(Stdio::piped());
         self.command.stderr(Stdio::piped());
-        let output = self
-            .command
+        self.command
             .output()
             .map_err(|e| format!("Failed launching difftool: {}", e))?;
-
-        let status = output.status;
-        if status.success() {
-            Ok(())
-        } else {
-            Err(String::from_utf8(output.stderr)
-                .map_err(|e| format!("Failed to convert error message: {}", e))?)
-        }
+        // Some difftools, like bcompare, will return non zero status when there is a diff and 0
+        // only when there are no changes.  This prevents us from trusting the status
+        Ok(())
     }
 }
 
@@ -88,35 +82,5 @@ mod tests {
 
         let mut diff = Diff::new(mock);
         assert_eq!(diff.launch(local, remote), Ok(()));
-    }
-
-    #[test]
-    fn diff_fails_to_launch() {
-        let local = OsStr::new("foo/baz/bar");
-        let remote = OsStr::new("some/other/file");
-        let mut mock = MockC::new();
-        mock.expect_arg()
-            .with(eq(local))
-            .times(1)
-            .returning(|_| MockC::new());
-        mock.expect_arg()
-            .with(eq(remote))
-            .times(1)
-            .returning(|_| MockC::new());
-        mock.expect_stdout().times(1).returning(|_| MockC::new());
-        mock.expect_stderr().times(1).returning(|_| MockC::new());
-        mock.expect_output().times(1).returning(|| {
-            Ok(Output {
-                status: ExitStatus::from_raw(1),
-                stdout: vec![],
-                stderr: b"an error message".to_vec(),
-            })
-        });
-
-        let mut diff = Diff::new(mock);
-        assert_eq!(
-            diff.launch(local, remote),
-            Err(String::from("an error message"))
-        );
     }
 }
