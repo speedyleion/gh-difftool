@@ -5,9 +5,6 @@
 
 //! Reverse apply patches to files to get back to the original version
 
-// Allowing dead code until this gets hooked up
-#![allow(dead_code)]
-
 use patch::{ParseError, Patch};
 use std::io::Write;
 use std::path::Path;

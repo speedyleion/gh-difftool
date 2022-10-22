@@ -5,9 +5,6 @@
 
 //! Launches a difftool to
 
-// Allowing dead code until this gets hooked up
-#![allow(dead_code)]
-
 use crate::cmd::Cmd;
 use std::ffi::OsStr;
 use std::process::Stdio;
