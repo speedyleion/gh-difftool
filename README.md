@@ -1,19 +1,30 @@
 # gh-difftool
 
-A difftool implementation for use with GitHub pull requests.
+A difftool extension to the GitHub CLI, [gh](https://cli.github.com/).
 
 Launches a difftool to show the differences between the branch the PR is being
 merged into and the current on disk files.  If there are no local modifications
 this should be the same diffs that the GitHub web UI shows.
 
 ```shell
-Usage: gh-difftool [OPTIONS]
+Usage: gh difftool [OPTIONS]
 
 Options:
   -t, --tool <DIFFTOOL>  The difftool command to run [env: DIFFTOOL=]
   -h, --help             Print help information
   -V, --version          Print version information
 ```
+
+## Installation
+
+This can be installed like any other GitHub CLI extension,
+<https://docs.github.com/en/github-cli/github-cli/using-github-cli-extensions>
+
+```shell
+gh extension install speedyleion/gh-difftool
+```
+
+> Note: Current installs only support 64bit Linux.
 
 ## Difftool
 
