@@ -1,3 +1,4 @@
+mod change_set;
 mod cmd;
 mod diff;
 mod gh_interface;
@@ -27,11 +28,13 @@ fn main() -> Result<(), String> {
 
 fn run_diff(difftool: impl AsRef<str>) -> Result<(), String> {
     let mut gh = gh_interface::GhCli::new(Command::new("gh"));
-    let diff_text = gh.diff()?;
-    let patches =
-        PatchSet::new(diff_text.as_str()).map_err(|e| format!("Failed getting patches: {}", e))?;
-    for patch in patches.patches {
-        diff_one(&patch, &difftool)?;
+    let changes = gh.local_change_set().map_err(|e| format!("{e}"))?;
+    for change in changes.changes {
+        let patches =
+            PatchSet::new(&change.patch).map_err(|e| format!("Failed getting patches: {}", e))?;
+        for patch in patches.patches {
+            diff_one(&patch, &difftool)?;
+        }
     }
     Ok(())
 }
