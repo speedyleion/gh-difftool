@@ -51,6 +51,7 @@ mod tests {
             fn stdout(&mut self, cfg: Stdio) -> &mut Self;
             fn stderr(&mut self, cfg: Stdio) -> &mut Self;
             fn output(&mut self) -> io::Result<Output>;
+            fn new_from_self(&self) -> Self;
         }
     }
 
