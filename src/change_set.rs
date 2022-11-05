@@ -29,27 +29,14 @@ impl TryFrom<&str> for ChangeSet {
     }
 }
 
-#[derive(Debug, Clone, Eq, PartialEq)]
-pub struct Taco<'a> {
-    pub stuff: &'a str,
-}
-impl<'a> TryFrom<&'a str> for Taco<'a> {
+impl<'a> TryFrom<&'a Change> for Patch<'a> {
     type Error = anyhow::Error;
 
-    fn try_from(stuff: &'a str) -> Result<Self> {
-        Ok(Taco{ stuff})
+    fn try_from(change: &'a Change) -> Result<Self> {
+        Ok(Patch::from_single(&change.raw_url).unwrap())
 
     }
 }
-
-// impl<'a> TryFrom<&'a Change> for Patch<'a> {
-//     type Error = anyhow::Error;
-//
-//     fn try_from(change: &'a Change) -> Result<Self> {
-//         Ok(Patch::from_single(&change.raw_url)?)
-//
-//     }
-// }
 
 #[cfg(test)]
 mod tests {
