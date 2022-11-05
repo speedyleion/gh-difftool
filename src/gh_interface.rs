@@ -80,7 +80,7 @@ impl<C: Cmd> GhCli<C> {
         let output = self.run_command([
             "api",
             "-H",
-            "\"Accept: application/vnd.github+json\"",
+            "Accept: application/vnd.github+json",
             &pr_path,
         ])?;
         ChangeSet::try_from(output.as_str())
