@@ -227,42 +227,34 @@ mod tests {
         assert_eq!(fs::read(&a).unwrap(), expected.into_bytes());
     }
 
-    // #[test]
-    // fn only_deleting_lines() {
-    //     let temp = TempDir::default().permanent();
-    //     let a = temp.join("a");
-    //     let b = temp.join("b");
-    //     let newest = dedent(
-    //         "
-    //         line one
-    //         line two
-    //         line three
-    //         ",
-    //     );
-    //     fs::write(&b, newest).unwrap();
-    //     let diff = dedent(
-    //         "
-    //         diff --git a/foo.txt b/foo.txt
-    //         index 0c2aa38..0370c84 100644
-    //         --- a/foo.txt
-    //         +++ b/foo.txt
-    //         @@ -1,2 +1,3 @@
-    //          line one
-    //         +line two
-    //          line three
-    //         ",
-    //     );
-    //     let expected = dedent(
-    //         "
-    //         line one
-    //         line three
-    //         ",
-    //     );
-    //     let patches = PatchSet::new(&diff).unwrap();
-    //     let patch = &patches.patches[0];
-    //     patch.reverse_apply(&b, &a).unwrap();
-    //     assert_eq!(fs::read(&a).unwrap(), expected.into_bytes());
-    // }
+    #[test]
+    fn only_deleting_lines() {
+        let temp = TempDir::default().permanent();
+        let a = temp.join("a");
+        let b = temp.join("b");
+        let newest = dedent(
+            "
+            line one
+            line two
+            line three
+            ",
+        );
+        fs::write(&b, newest).unwrap();
+        let diff = "@@ -1,2 +1,3 @@\n line one\n+line two\n line three";
+        let change = Change {
+            filename: "what/when/where.stuff".to_string(),
+            raw_url: "idk".to_string(),
+            patch: diff.to_string(),
+        };
+        let expected = dedent(
+            "
+            line one
+            line three
+            ",
+        );
+        change.reverse_apply(&b, &a).unwrap();
+        assert_eq!(fs::read(&a).unwrap(), expected.into_bytes());
+    }
 
     #[test]
     fn fail_to_apply() {
