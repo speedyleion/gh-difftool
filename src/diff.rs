@@ -7,6 +7,7 @@
 
 use crate::cmd::Cmd;
 use std::ffi::OsStr;
+use std::ffi::OsString;
 use std::process::Stdio;
 
 #[derive(Debug, Default)]
@@ -20,8 +21,8 @@ impl<C: Cmd> Diff<C> {
     }
 
     pub fn launch(&mut self, local: &OsStr, remote: &OsStr) -> Result<(), String> {
-        self.command.arg(local);
-        self.command.arg(remote);
+        self.command.arg(OsString::from(local));
+        self.command.arg(OsString::from(remote));
         self.command.stdout(Stdio::piped());
         self.command.stderr(Stdio::piped());
         self.command
@@ -47,7 +48,7 @@ mod tests {
     mock! {
         C {}
         impl Cmd for C {
-            fn arg(&mut self, arg: &OsStr) -> &mut Self;
+            fn arg(&mut self, arg: OsString) -> &mut Self;
             fn stdout(&mut self, cfg: Stdio) -> &mut Self;
             fn stderr(&mut self, cfg: Stdio) -> &mut Self;
             fn output(&mut self) -> io::Result<Output>;
@@ -57,15 +58,15 @@ mod tests {
 
     #[test]
     fn diff_launches_ok() {
-        let local = OsStr::new("foo/baz/bar");
-        let remote = OsStr::new("some/other/file");
+        let local = OsString::from("foo/baz/bar");
+        let remote = OsString::from("some/other/file");
         let mut mock = MockC::new();
         mock.expect_arg()
-            .with(eq(local))
+            .with(eq(local.clone()))
             .times(1)
             .returning(|_| MockC::new());
         mock.expect_arg()
-            .with(eq(remote))
+            .with(eq(remote.clone()))
             .times(1)
             .returning(|_| MockC::new());
         mock.expect_stdout().times(1).returning(|_| MockC::new());
@@ -79,6 +80,6 @@ mod tests {
         });
 
         let mut diff = Diff::new(mock);
-        assert_eq!(diff.launch(local, remote), Ok(()));
+        assert_eq!(diff.launch(local.as_os_str(), remote.as_os_str()), Ok(()));
     }
 }

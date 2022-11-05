@@ -9,7 +9,7 @@ use crate::change_set::ChangeSet;
 use crate::cmd::Cmd;
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
-use std::ffi::OsStr;
+use std::ffi::{OsStr, OsString};
 use std::fmt::{Display, Formatter};
 use std::io::{Error, ErrorKind};
 use std::process::Stdio;
@@ -58,7 +58,7 @@ impl<C: Cmd> GhCli<C> {
     {
         let mut command = self.command.new_from_self();
         for arg in args {
-            command.arg(arg.as_ref());
+            command.arg(OsString::from(arg.as_ref()));
         }
         command.stdout(Stdio::piped());
         command.stderr(Stdio::piped());
@@ -105,7 +105,7 @@ mod tests {
     use crate::change_set::{Change, ChangeSet};
     use mockall::mock;
     use mockall::predicate::eq;
-    use std::ffi::OsStr;
+    use std::ffi::{OsStr, OsString};
     use std::io;
     use std::os::unix::prelude::ExitStatusExt;
     use std::process::Stdio;
@@ -114,7 +114,7 @@ mod tests {
     mock! {
         C {}
         impl Cmd for C {
-            fn arg(&mut self, arg: &OsStr) -> &mut Self;
+            fn arg(&mut self, arg: OsString) -> &mut Self;
             fn stdout(&mut self, cfg: Stdio) -> &mut Self;
             fn stderr(&mut self, cfg: Stdio) -> &mut Self;
             fn output(&mut self) -> io::Result<Output>;
@@ -123,30 +123,23 @@ mod tests {
     }
 
     fn change_set_mock(status: i32, stdout: &str, stderr: &str) -> MockC {
+        mocked_command(&["api", "-H", "\"Accept: application/vnd.github+json\"", "/repos/speedyleion/gh-difftool/pulls/10/files"], status, stdout.as_ref(), stderr.as_ref())
+    }
+
+    fn mocked_command(args: &[&str], status: i32, stdout: &str, stderr: &str) -> MockC {
         let mut mock = MockC::new();
         let stdout = stdout.to_string();
         let stderr = stderr.to_string();
+        let args = args.into_iter().map(|s| String::from(*s)).collect::<Vec<_>>();
         mock.expect_new_from_self().returning(move || {
             let mut mock = MockC::new();
-            mock.expect_arg()
-                .with(eq(OsStr::new("api")))
-                .times(1)
-                .returning(|_| MockC::new());
-            mock.expect_arg()
-                .with(eq(OsStr::new("-H")))
-                .times(1)
-                .returning(|_| MockC::new());
-            mock.expect_arg()
-                .with(eq(OsStr::new("\"Accept: application/vnd.github+json\"")))
-                .times(1)
-                .returning(|_| MockC::new());
-            mock.expect_arg()
-                .with(eq(OsStr::new(
-                    "/repos/speedyleion/gh-difftool/pulls/10/files",
-                )))
-                .times(1)
-                .returning(|_| MockC::new());
-            // No good way to check for pipes
+            let args = args.clone();
+            for arg in args {
+                mock.expect_arg()
+                    .with(eq(OsString::from(&arg)))
+                    .times(1)
+                    .returning(|_| MockC::new());
+            }
             mock.expect_stdout().times(1).returning(|_| MockC::new());
             mock.expect_stderr().times(1).returning(|_| MockC::new());
             let stdout = stdout.as_bytes().to_vec();
@@ -164,47 +157,11 @@ mod tests {
     }
 
     fn pr_number_mock(status: i32, stdout: impl AsRef<str>, stderr: impl AsRef<str>) -> MockC {
-        let mut mock = MockC::new();
-        for arg in ["pr", "view", "--json", "number"] {
-            mock.expect_arg()
-                .with(eq(OsStr::new(arg)))
-                .times(1)
-                .returning(|_| MockC::new());
-        }
-        mock.expect_stdout().times(1).returning(|_| MockC::new());
-        mock.expect_stderr().times(1).returning(|_| MockC::new());
-        let stdout = stdout.as_ref().to_string();
-        let stderr = stderr.as_ref().to_string();
-        mock.expect_output().times(1).returning(move || {
-            Ok(Output {
-                status: ExitStatus::from_raw(status),
-                stdout: stdout.as_bytes().to_vec(),
-                stderr: stderr.as_bytes().to_vec(),
-            })
-        });
-        mock
+        mocked_command(&["pr", "view", "--json", "number"], status, stdout.as_ref(), stderr.as_ref())
     }
 
     fn repo_mock(status: i32, stdout: impl AsRef<str>, stderr: impl AsRef<str>) -> MockC {
-        let mut mock = MockC::new();
-        for arg in ["repo", "view", "--json", "owner,name"] {
-            mock.expect_arg()
-                .with(eq(OsStr::new(arg)))
-                .times(1)
-                .returning(|_| MockC::new());
-        }
-        mock.expect_stdout().times(1).returning(|_| MockC::new());
-        mock.expect_stderr().times(1).returning(|_| MockC::new());
-        let stdout = stdout.as_ref().to_string();
-        let stderr = stderr.as_ref().to_string();
-        mock.expect_output().times(1).returning(move || {
-            Ok(Output {
-                status: ExitStatus::from_raw(status),
-                stdout: stdout.as_bytes().to_vec(),
-                stderr: stderr.as_bytes().to_vec(),
-            })
-        });
-        mock
+        mocked_command(&["repo", "view", "--json", "owner,name"], status, stdout.as_ref(), stderr.as_ref())
     }
 
     // The first file in the output from
@@ -457,7 +414,7 @@ mod tests {
             });
         }
         mock.expect_arg()
-            .with(eq(OsStr::new(
+            .with(eq(OsString::from(
                 "/repos/a_cool_owner/some-repo/pulls/11/files",
             )))
             .times(1)
@@ -495,7 +452,7 @@ mod tests {
             });
         }
         mock.expect_arg()
-            .with(eq(OsStr::new("/repos/why/what/pulls/3/files")))
+            .with(eq(OsString::from("/repos/why/what/pulls/3/files")))
             .times(1)
             .returning(|_| MockC::new());
         mock.expect_arg().returning(|_| MockC::new());
