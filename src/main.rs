@@ -73,20 +73,7 @@ mod tests {
             ",
         );
         fs::write(&b, new).unwrap();
-        let diff = dedent(&format!(
-            "
-            diff --git a/foo.txt b/foo.txt
-            index 0c2aa38..0370c84 100644
-            --- a/foo.txt
-            +++ b/{}
-            @@ -1,3 +1,3 @@
-             line one
-            -line two
-            +line changed
-             line three
-            ",
-            b.to_str().unwrap()
-        ));
+        let diff = "@@ -1,3 +1,3 @@\n line one\n-line two\n+line changed\n line three";
         let expected = dedent(
             "
             line one
@@ -94,7 +81,7 @@ mod tests {
             line three
             ",
         );
-        let change = Change{ filename: "foo".to_string(), raw_url: "sure".to_string(), patch: diff};
+        let change = Change{ filename: b.to_string_lossy().to_string(), raw_url: "sure".to_string(), patch: diff.to_string()};
         let original = create_temp_original(&change).unwrap();
         assert_eq!(fs::read(&original.path()).unwrap(), expected.into_bytes());
     }
