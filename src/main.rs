@@ -2,10 +2,7 @@ mod change_set;
 mod cmd;
 mod diff;
 mod gh_interface;
-mod patch;
 
-use crate::patch::ReverseApply;
-use ::patch::Patch;
 use clap::Parser;
 use std::ffi::{OsStr, OsString};
 use std::process::Command;

@@ -9,7 +9,6 @@ use std::io::Write;
 use std::path::Path;
 use std::process::{Command, Stdio};
 use anyhow::Result;
-use patch::Patch;
 use serde::{Deserialize, Serialize};
 
 #[derive(Default, PartialEq, Eq, Debug, Serialize, Deserialize)]
@@ -90,7 +89,6 @@ impl TryFrom<&str> for ChangeSet {
 #[cfg(test)]
 mod tests {
     use std::fs;
-    use patch::Patch;
     use temp_testdir::TempDir;
     use super::*;
 
@@ -286,10 +284,9 @@ mod tests {
         let change = Change {
             filename: "what/when/where.stuff".to_string(),
             raw_url: "idk".to_string(),
-            patch: "I guess".to_string(),
+            patch: diff.to_string(),
         };
 
-        assert_eq!(change.reverse_apply(&b, &a), Ok(()));
         assert!(
             matches!(change.reverse_apply(&b, &a), Err(message) if message.starts_with(&message_start))
         );
