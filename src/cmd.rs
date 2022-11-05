@@ -5,7 +5,7 @@
 
 //! A common command trait to make it possible to mock Command
 
-use std::ffi::{OsStr, OsString};
+use std::ffi::OsString;
 use std::io;
 use std::process::Command;
 use std::process::Output;

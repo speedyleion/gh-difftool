@@ -39,7 +39,6 @@ mod tests {
     use super::*;
     use mockall::mock;
     use mockall::predicate::eq;
-    use std::ffi::OsStr;
     use std::io;
     use std::os::unix::prelude::ExitStatusExt;
     use std::process::Stdio;

@@ -105,7 +105,7 @@ mod tests {
     use crate::change_set::{Change, ChangeSet};
     use mockall::mock;
     use mockall::predicate::eq;
-    use std::ffi::{OsStr, OsString};
+    use std::ffi::OsString;
     use std::io;
     use std::os::unix::prelude::ExitStatusExt;
     use std::process::Stdio;
@@ -401,27 +401,46 @@ mod tests {
         // functions we just want to ensure everything is plumbed up correctly to build the local
         // repo
         let mut mock = MockC::new();
+
         for output in [
             "{\"number\": 11}",
-            "{\"name\": \"some-repo\", \"owner\": {\"id\": \"MDQ6VXNlcjE0MDA1Mzk=\", \"login\": \"a_cool_owner\"} }",
-            ONE_FILE]{
+            "{\"name\": \"some-repo\", \"owner\": {\"id\": \"MDQ6VXNlcjE0MDA1Mzk=\", \"login\": \"a_cool_owner\"} }",]
+            {
+            mock.expect_new_from_self().times(1).returning(|| {
+                let mut mock = MockC::new();
+                mock.expect_output().times(1).returning(|| {
+                    Ok(Output {
+                        status: ExitStatus::from_raw(0),
+                        stdout: output.as_bytes().to_vec(),
+                        stderr: vec![],
+                    })
+                });
+                mock.expect_arg().returning(|_| MockC::new());
+                mock.expect_stdout().returning(|_| MockC::new());
+                mock.expect_stderr().returning(|_| MockC::new());
+                mock
+            });
+        }
+        mock.expect_new_from_self().times(1).returning(|| {
+            let mut mock = MockC::new();
+            mock.expect_arg()
+                .with(eq(OsString::from(
+                    "/repos/a_cool_owner/some-repo/pulls/11/files",
+                )))
+                .times(1)
+                .returning(|_| MockC::new());
             mock.expect_output().times(1).returning(|| {
                 Ok(Output {
                     status: ExitStatus::from_raw(0),
-                    stdout: output.as_bytes().to_vec(),
+                    stdout: ONE_FILE.as_bytes().to_vec(),
                     stderr: vec![],
                 })
             });
-        }
-        mock.expect_arg()
-            .with(eq(OsString::from(
-                "/repos/a_cool_owner/some-repo/pulls/11/files",
-            )))
-            .times(1)
-            .returning(|_| MockC::new());
-        mock.expect_arg().returning(|_| MockC::new());
-        mock.expect_stdout().returning(|_| MockC::new());
-        mock.expect_stderr().returning(|_| MockC::new());
+            mock.expect_arg().returning(|_| MockC::new());
+            mock.expect_stdout().returning(|_| MockC::new());
+            mock.expect_stderr().returning(|_| MockC::new());
+            mock
+        });
         let mut gh = GhCli::new(mock);
         assert_eq!(gh.local_change_set().unwrap(),
                    ChangeSet {
@@ -439,25 +458,46 @@ mod tests {
         // functions we just want to ensure everything is plumbed up correctly to build the local
         // repo
         let mut mock = MockC::new();
+
         for output in [
             "{\"number\": 3}",
-            "{ \"name\": \"what\", \"owner\": { \"id\": \"MDQ6VXNlcjE0MDA1Mzk=\", \"login\": \"why\" } }",
-            ONE_FILE]{
+            "{ \"name\": \"what\", \"owner\": { \"id\": \"MDQ6VXNlcjE0MDA1Mzk=\", \"login\": \"why\" } }",]
+            {
+            mock.expect_new_from_self().times(1).returning(|| {
+                let mut mock = MockC::new();
+                mock.expect_output().times(1).returning(|| {
+                    Ok(Output {
+                        status: ExitStatus::from_raw(0),
+                        stdout: output.as_bytes().to_vec(),
+                        stderr: vec![],
+                    })
+                });
+                mock.expect_arg().returning(|_| MockC::new());
+                mock.expect_stdout().returning(|_| MockC::new());
+                mock.expect_stderr().returning(|_| MockC::new());
+                mock
+            });
+        }
+        mock.expect_new_from_self().times(1).returning(|| {
+            let mut mock = MockC::new();
+            mock.expect_arg()
+                .with(eq(OsString::from(
+                    "/repos/why/what/pulls/3/files",
+                )))
+                .times(1)
+                .returning(|_| MockC::new());
             mock.expect_output().times(1).returning(|| {
                 Ok(Output {
                     status: ExitStatus::from_raw(0),
-                    stdout: output.as_bytes().to_vec(),
+                    stdout: ONE_FILE.as_bytes().to_vec(),
                     stderr: vec![],
                 })
             });
-        }
-        mock.expect_arg()
-            .with(eq(OsString::from("/repos/why/what/pulls/3/files")))
-            .times(1)
-            .returning(|_| MockC::new());
-        mock.expect_arg().returning(|_| MockC::new());
-        mock.expect_stdout().returning(|_| MockC::new());
-        mock.expect_stderr().returning(|_| MockC::new());
+            mock.expect_arg().returning(|_| MockC::new());
+            mock.expect_stdout().returning(|_| MockC::new());
+            mock.expect_stderr().returning(|_| MockC::new());
+            mock
+        });
         let mut gh = GhCli::new(mock);
         assert_eq!(gh.local_change_set().unwrap(),
                    ChangeSet {
