@@ -56,12 +56,13 @@ impl<C: Cmd> GhCli<C> {
         I: IntoIterator<Item = T>,
         T: AsRef<OsStr>,
     {
+        let mut command = self.command.new_from_self();
         for arg in args {
-            self.command.arg(arg.as_ref());
+            command.arg(arg.as_ref());
         }
-        self.command.stdout(Stdio::piped());
-        self.command.stderr(Stdio::piped());
-        let output = self.command.output()?;
+        command.stdout(Stdio::piped());
+        command.stderr(Stdio::piped());
+        let output = command.output()?;
         let status = output.status;
         if status.success() {
             Ok(String::from_utf8(output.stdout)?)
@@ -121,37 +122,43 @@ mod tests {
         }
     }
 
-    fn change_set_mock(status: i32, stdout: impl AsRef<str>, stderr: impl AsRef<str>) -> MockC {
+    fn change_set_mock(status: i32, stdout: &str, stderr: &str) -> MockC {
         let mut mock = MockC::new();
-        mock.expect_arg()
-            .with(eq(OsStr::new("api")))
-            .times(1)
-            .returning(|_| MockC::new());
-        mock.expect_arg()
-            .with(eq(OsStr::new("-H")))
-            .times(1)
-            .returning(|_| MockC::new());
-        mock.expect_arg()
-            .with(eq(OsStr::new("\"Accept: application/vnd.github+json\"")))
-            .times(1)
-            .returning(|_| MockC::new());
-        mock.expect_arg()
-            .with(eq(OsStr::new(
-                "/repos/speedyleion/gh-difftool/pulls/10/files",
-            )))
-            .times(1)
-            .returning(|_| MockC::new());
-        // No good way to check for pipes
-        mock.expect_stdout().times(1).returning(|_| MockC::new());
-        mock.expect_stderr().times(1).returning(|_| MockC::new());
-        let stdout = stdout.as_ref().to_string();
-        let stderr = stderr.as_ref().to_string();
-        mock.expect_output().times(1).returning(move || {
-            Ok(Output {
-                status: ExitStatus::from_raw(status),
-                stdout: stdout.as_bytes().to_vec(),
-                stderr: stderr.as_bytes().to_vec(),
-            })
+        let stdout = stdout.to_string();
+        let stderr = stderr.to_string();
+        mock.expect_new_from_self().returning(move || {
+            let mut mock = MockC::new();
+            mock.expect_arg()
+                .with(eq(OsStr::new("api")))
+                .times(1)
+                .returning(|_| MockC::new());
+            mock.expect_arg()
+                .with(eq(OsStr::new("-H")))
+                .times(1)
+                .returning(|_| MockC::new());
+            mock.expect_arg()
+                .with(eq(OsStr::new("\"Accept: application/vnd.github+json\"")))
+                .times(1)
+                .returning(|_| MockC::new());
+            mock.expect_arg()
+                .with(eq(OsStr::new(
+                    "/repos/speedyleion/gh-difftool/pulls/10/files",
+                )))
+                .times(1)
+                .returning(|_| MockC::new());
+            // No good way to check for pipes
+            mock.expect_stdout().times(1).returning(|_| MockC::new());
+            mock.expect_stderr().times(1).returning(|_| MockC::new());
+            let stdout = stdout.as_bytes().to_vec();
+            let stderr = stderr.as_bytes().to_vec();
+            mock.expect_output().times(1).returning(move || {
+                Ok(Output {
+                    status: ExitStatus::from_raw(status),
+                    stdout: stdout.clone(),
+                    stderr: stderr.clone(),
+                })
+            });
+            mock
         });
         mock
     }
