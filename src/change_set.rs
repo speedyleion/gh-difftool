@@ -6,6 +6,7 @@
 //! Set of changes that goes from one version of files to another
 
 use anyhow::Result;
+use patch::Patch;
 use serde::{Deserialize, Serialize};
 
 #[derive(Default, PartialEq, Eq, Debug, Serialize, Deserialize)]
@@ -28,8 +29,31 @@ impl TryFrom<&str> for ChangeSet {
     }
 }
 
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct Taco<'a> {
+    pub stuff: &'a str,
+}
+impl<'a> TryFrom<&'a str> for Taco<'a> {
+    type Error = anyhow::Error;
+
+    fn try_from(stuff: &'a str) -> Result<Self> {
+        Ok(Taco{ stuff})
+
+    }
+}
+
+// impl<'a> TryFrom<&'a Change> for Patch<'a> {
+//     type Error = anyhow::Error;
+//
+//     fn try_from(change: &'a Change) -> Result<Self> {
+//         Ok(Patch::from_single(&change.raw_url)?)
+//
+//     }
+// }
+
 #[cfg(test)]
 mod tests {
+    use patch::Patch;
     use super::*;
 
     #[test]
@@ -70,7 +94,7 @@ mod tests {
                 changes: vec![Change {
                     filename: String::from("Cargo.toml"),
                     raw_url: String::from("https://github.com/speedyleion/gh-difftool/raw/befb7bf69c3c8ba97c714d57c8dadd9621021c84/Cargo.toml"),
-                    patch: String::from("@@ -6,3 +6,7 @@ edition = \"2021\"\n [dev-dependencies]\n assert_cmd = \"2.0.4\"\n mockall = \"0.11.2\"\n+textwrap = \"0.15.1\"\n+\n+[dependencies]\n+patch = \"0.6.0\""),
+                    patch: String::from("---Cargo.toml\n+++Cargo.toml\n@@ -6,3 +6,7 @@ edition = \"2021\"\n [dev-dependencies]\n assert_cmd = \"2.0.4\"\n mockall = \"0.11.2\"\n+textwrap = \"0.15.1\"\n+\n+[dependencies]\n+patch = \"0.6.0\"\n"),
                 }]
             }
         );
@@ -134,5 +158,17 @@ mod tests {
                 ]
             }
         );
+    }
+
+    #[test]
+    fn try_from_change() {
+        let change = Change {
+            filename: String::from("Cargo.toml"),
+            raw_url: String::from("https://github.com/speedyleion/gh-difftool/raw/befb7bf69c3c8ba97c714d57c8dadd9621021c84/Cargo.toml"),
+            patch: String::from("--- Cargo.toml\n+++ Cargo.toml\n@@ -6,3 +6,7 @@ edition = \"2021\"\n [dev-dependencies]\n assert_cmd = \"2.0.4\"\n mockall = \"0.11.2\"\n+textwrap = \"0.15.1\"\n+\n+[dependencies]\n+patch = \"0.6.0\"\n"),
+        };
+        let patch = Patch::from_single(&change.patch).unwrap();
+        assert_eq!(patch.old.path, "Cargo.toml");
+        assert_eq!(patch.new.path, "Cargo.toml");
     }
 }

@@ -4,7 +4,7 @@ mod diff;
 mod gh_interface;
 mod patch;
 
-use crate::patch::{PatchSet, ReverseApply};
+use crate::patch::ReverseApply;
 use ::patch::Patch;
 use clap::Parser;
 use std::ffi::{OsStr, OsString};
@@ -28,13 +28,10 @@ fn main() -> Result<(), String> {
 
 fn run_diff(difftool: impl AsRef<str>) -> Result<(), String> {
     let mut gh = gh_interface::GhCli::new(Command::new("gh"));
-    let changes = gh.local_change_set().map_err(|e| format!("{e}"))?;
-    for change in changes.changes {
-        let patches =
-            PatchSet::new(&change.patch).map_err(|e| format!("Failed getting patches: {}", e))?;
-        for patch in patches.patches {
-            diff_one(&patch, &difftool)?;
-        }
+    let change_set = gh.local_change_set().map_err(|e| format!("{e}"))?;
+    for change in change_set.changes {
+        // let patch = (&change).try_into().map_err(|e| format!("{e}"))?;
+        // diff_one(&patch, &difftool)?;
     }
     Ok(())
 }
