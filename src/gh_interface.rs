@@ -123,7 +123,7 @@ mod tests {
     }
 
     fn change_set_mock(status: i32, stdout: &str, stderr: &str) -> MockC {
-        mocked_command(&["api", "-H", "\"Accept: application/vnd.github+json\"", "/repos/speedyleion/gh-difftool/pulls/10/files"], status, stdout.as_ref(), stderr.as_ref())
+        mocked_command(&["api", "-H", "Accept: application/vnd.github+json", "/repos/speedyleion/gh-difftool/pulls/10/files"], status, stdout.as_ref(), stderr.as_ref())
     }
 
     fn mocked_command(args: &[&str], status: i32, stdout: &str, stderr: &str) -> MockC {
