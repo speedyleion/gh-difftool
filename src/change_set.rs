@@ -5,6 +5,9 @@
 
 //! Set of changes that goes from one version of files to another
 
+use std::io::Write;
+use std::path::Path;
+use std::process::{Command, Stdio};
 use anyhow::Result;
 use patch::Patch;
 use serde::{Deserialize, Serialize};
@@ -15,6 +18,61 @@ pub struct Change {
     pub raw_url: String,
     pub patch: String,
 }
+
+impl Change {
+    pub fn reverse_apply<P1, P2>(&self, src: P1, dest: P2) -> Result<(), String>
+        where
+            P1: AsRef<Path>,
+            P2: AsRef<Path>,
+    {
+        let mut cmd = Command::new("patch");
+        cmd.args([
+            "-R",
+            &src.as_ref().to_string_lossy(),
+            "-o",
+            &dest.as_ref().to_string_lossy(),
+        ]);
+        cmd.stdin(Stdio::piped())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped());
+        let mut child = cmd
+            .spawn()
+            .map_err(|e| format!("Failed to start `patch` process: {}", e))?;
+        let mut stdin = child.stdin.take().expect("failed to get stdin for `patch`");
+
+        let mut contents = self.patch.clone();
+
+        // Not sure how to force this in a minimum reproducible example.
+        // When using patch and deleting things close to the end of the file it seems that missing
+        // a newline at the end of the patch will cause it to fail. Always Adding a newline to the
+        // end never seems to be an issue.
+        contents.push('\n');
+
+        // If one doesn't use a thread for writing stdin then it will block indefinitely
+        std::thread::spawn(move || {
+            stdin
+                .write_all(contents.as_bytes())
+                .expect("Failed to write to stdin");
+        });
+
+        let output = child
+            .wait_with_output()
+            .map_err(|e| format!("Failed to run the `patch` process to finish: {}", e))?;
+
+        let status = output.status;
+        if status.success() {
+            Ok(())
+        } else {
+            Err(format!(
+                "Failed to patch {:?} to {:?}: {}",
+                src.as_ref(),
+                dest.as_ref(),
+                String::from_utf8_lossy(&output.stderr)
+            ))
+        }
+    }
+}
+
 #[derive(Default, PartialEq, Eq, Debug)]
 pub struct ChangeSet {
     pub changes: Vec<Change>,
@@ -29,18 +87,11 @@ impl TryFrom<&str> for ChangeSet {
     }
 }
 
-impl<'a> TryFrom<&'a Change> for Patch<'a> {
-    type Error = anyhow::Error;
-
-    fn try_from(change: &'a Change) -> Result<Self> {
-        Ok(Patch::from_single(&change.raw_url).unwrap())
-
-    }
-}
-
 #[cfg(test)]
 mod tests {
+    use std::fs;
     use patch::Patch;
+    use temp_testdir::TempDir;
     use super::*;
 
     #[test]
@@ -147,15 +198,101 @@ mod tests {
         );
     }
 
+    // #[test]
+    // fn reverse_apply() {
+    //     let temp = TempDir::default().permanent();
+    //     let a = temp.join("a");
+    //     let b = temp.join("b");
+    //     let newest = dedent(
+    //         "
+    //         line one
+    //         line changed
+    //         line three
+    //         ",
+    //     );
+    //     fs::write(&b, newest).unwrap();
+    //     let diff = dedent(
+    //         "
+    //         diff --git a/foo.txt b/foo.txt
+    //         index 0c2aa38..0370c84 100644
+    //         --- a/foo.txt
+    //         +++ b/foo.txt
+    //         @@ -1,3 +1,3 @@
+    //          line one
+    //         -line two
+    //         +line changed
+    //          line three
+    //         ",
+    //     );
+    //     let expected = dedent(
+    //         "
+    //         line one
+    //         line two
+    //         line three
+    //         ",
+    //     );
+    //     let patches = PatchSet::new(&diff).unwrap();
+    //     let patch = &patches.patches[0];
+    //     patch.reverse_apply(&b, &a).unwrap();
+    //     assert_eq!(fs::read(&a).unwrap(), expected.into_bytes());
+    // }
+    //
+    // #[test]
+    // fn only_deleting_lines() {
+    //     let temp = TempDir::default().permanent();
+    //     let a = temp.join("a");
+    //     let b = temp.join("b");
+    //     let newest = dedent(
+    //         "
+    //         line one
+    //         line two
+    //         line three
+    //         ",
+    //     );
+    //     fs::write(&b, newest).unwrap();
+    //     let diff = dedent(
+    //         "
+    //         diff --git a/foo.txt b/foo.txt
+    //         index 0c2aa38..0370c84 100644
+    //         --- a/foo.txt
+    //         +++ b/foo.txt
+    //         @@ -1,2 +1,3 @@
+    //          line one
+    //         +line two
+    //          line three
+    //         ",
+    //     );
+    //     let expected = dedent(
+    //         "
+    //         line one
+    //         line three
+    //         ",
+    //     );
+    //     let patches = PatchSet::new(&diff).unwrap();
+    //     let patch = &patches.patches[0];
+    //     patch.reverse_apply(&b, &a).unwrap();
+    //     assert_eq!(fs::read(&a).unwrap(), expected.into_bytes());
+    // }
+
     #[test]
-    fn try_from_change() {
+    fn fail_to_apply() {
+        let temp = TempDir::default().permanent();
+        let a = temp.join("a");
+        let b = temp.join("b");
+        let newest = "\n";
+        fs::write(&b, newest).unwrap();
+        let diff = "@@ -1,3 +1,3 @@\n line one\n+line changed\n line three";
+        let message_start = format!("Failed to patch {:?} to {:?}: patch: **** malformed", b, a);
         let change = Change {
-            filename: String::from("Cargo.toml"),
-            raw_url: String::from("https://github.com/speedyleion/gh-difftool/raw/befb7bf69c3c8ba97c714d57c8dadd9621021c84/Cargo.toml"),
-            patch: String::from("--- Cargo.toml\n+++ Cargo.toml\n@@ -6,3 +6,7 @@ edition = \"2021\"\n [dev-dependencies]\n assert_cmd = \"2.0.4\"\n mockall = \"0.11.2\"\n+textwrap = \"0.15.1\"\n+\n+[dependencies]\n+patch = \"0.6.0\"\n"),
+            filename: "what/when/where.stuff".to_string(),
+            raw_url: "idk".to_string(),
+            patch: "I guess".to_string(),
         };
-        let patch = Patch::from_single(&change.patch).unwrap();
-        assert_eq!(patch.old.path, "Cargo.toml");
-        assert_eq!(patch.new.path, "Cargo.toml");
+
+        assert_eq!(change.reverse_apply(&b, &a), Ok(()));
+        assert!(
+            matches!(change.reverse_apply(&b, &a), Err(message) if message.starts_with(&message_start))
+        );
     }
+
 }

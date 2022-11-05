@@ -10,6 +10,7 @@ use clap::Parser;
 use std::ffi::{OsStr, OsString};
 use std::process::Command;
 use tempfile::NamedTempFile;
+use crate::change_set::Change;
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -30,8 +31,7 @@ fn run_diff(difftool: impl AsRef<str>) -> Result<(), String> {
     let mut gh = gh_interface::GhCli::new(Command::new("gh"));
     let change_set = gh.local_change_set().map_err(|e| format!("{e}"))?;
     for change in change_set.changes {
-        // let patch = (&change).try_into().map_err(|e| format!("{e}"))?;
-        // diff_one(&patch, &difftool)?;
+        diff_one(&change, &difftool)?;
     }
     Ok(())
 }
@@ -40,20 +40,20 @@ fn normalize_file_name<S: AsRef<str>>(filename: S) -> OsString {
     OsString::from(&filename.as_ref()[2..])
 }
 
-fn diff_one(patch: &Patch, difftool: impl AsRef<str>) -> Result<(), String> {
-    let original = create_temp_original(patch)?;
-    let new = normalize_file_name(&patch.new.path);
+fn diff_one(change: &Change, difftool: impl AsRef<str>) -> Result<(), String> {
+    let original = create_temp_original(change)?;
+    let new = normalize_file_name(&change.filename);
 
     let mut difftool = diff::Diff::new(Command::new(OsStr::new(difftool.as_ref())));
     difftool.launch(original.path().as_os_str(), &new)
 }
 
-fn create_temp_original(patch: &Patch) -> Result<NamedTempFile, String> {
+fn create_temp_original(change: &Change) -> Result<NamedTempFile, String> {
     let file = NamedTempFile::new().map_err(|e| format!("Failed getting temp file: {}", e))?;
 
     // The first 2 characters are "b/" from git's diff output
-    let normalized_path = normalize_file_name(&patch.new.path);
-    patch.reverse_apply(normalized_path, file.path())?;
+    let normalized_path = normalize_file_name(&change.filename);
+    change.reverse_apply(normalized_path, file.path())?;
     Ok(file)
 }
 
@@ -97,8 +97,8 @@ mod tests {
             line three
             ",
         );
-        let patch = Patch::from_single(&diff).unwrap();
-        let original = create_temp_original(&patch).unwrap();
+        let change = Change{ filename: "foo".to_string(), raw_url: "sure".to_string(), patch: diff};
+        let original = create_temp_original(&change).unwrap();
         assert_eq!(fs::read(&original.path()).unwrap(), expected.into_bytes());
     }
 
