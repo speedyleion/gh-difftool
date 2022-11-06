@@ -77,6 +77,8 @@ mod tests {
     use std::process::Stdio;
     use std::process::{ExitStatus, Output};
     use std::fs;
+    use httpmock::MockServer;
+    use httpmock::prelude::GET;
     use temp_testdir::TempDir;
     use textwrap::dedent;
 
@@ -127,16 +129,28 @@ mod tests {
 
     #[test]
     fn getting_a_second_set_of_new_content() {
+        let server = MockServer::start();
+
+        let contents = "something\nelse";
+
+        let mock = server.mock(|when, then| {
+            when.method(GET)
+                .path("/some_raw_url/path");
+            then.status(200)
+                .header("content-type", "text/html")
+                .body(contents);
+        });
+
         let change = Change {
             filename: "foo/bar/fish.ext".to_string(),
-            raw_url: "sure".to_string(),
+            raw_url: server.url("/some_raw_url/path"),
             patch: "@@ -1,3 +1,3 @@\n doesn't matter".to_string(),
         };
         let diff = Diff::new(change);
         let new_file = diff.new_file_contents().unwrap();
 
-        let expected = "something\nelse";
-        assert_eq!(fs::read(&new_file.path()).unwrap(), expected.to_string().into_bytes());
+        mock.assert();
+        assert_eq!(fs::read(&new_file.path()).unwrap(), contents.to_string().into_bytes());
     }
 
     mock! {

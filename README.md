@@ -49,3 +49,4 @@ launcher script or similar that matches this format.
 
 - The GitHub CLI, [gh](https://cli.github.com/)
 - The [patch](https://www.man7.org/linux/man-pages/man1/patch.1.html) utility
+- OpenSSL headers for building
