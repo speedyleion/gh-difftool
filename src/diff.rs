@@ -9,6 +9,7 @@ use anyhow::Result;
 use crate::cmd::Cmd;
 use std::ffi::OsStr;
 use std::ffi::OsString;
+use std::fs;
 use std::process::{Command, Stdio};
 use tempfile::NamedTempFile;
 use crate::Change;
@@ -19,7 +20,7 @@ pub struct Diff {
 }
 
 #[derive(Debug, Default)]
-pub struct Difftool<C> {
+struct Difftool<C> {
     command: C,
 }
 
@@ -49,6 +50,12 @@ impl Diff {
         let original = self.create_temp_original()?;
         let mut difftool = Difftool::new(Command::new(program.as_ref()));
         difftool.launch(original.path().as_os_str(), OsStr::new(&self.change.filename))
+    }
+
+    pub(crate) fn new_file_contents(&self) -> Result<NamedTempFile> {
+        let file = NamedTempFile::new()?;
+        fs::write(&file, "line one\nline two")?;
+        Ok(file)
     }
 
     fn create_temp_original(&self) -> Result<NamedTempFile> {
@@ -101,6 +108,21 @@ mod tests {
         let diff = Diff::new(change);
         let original = diff.create_temp_original().unwrap();
         assert_eq!(fs::read(&original.path()).unwrap(), expected.into_bytes());
+    }
+
+    #[test]
+    fn get_new_content() {
+        let change = Change {
+            filename: "foo/bar/fish.ext".to_string(),
+            raw_url: "sure".to_string(),
+            patch: "@@ -1,3 +1,3 @@\n doesn't matter".to_string(),
+        };
+        let diff = Diff::new(change);
+        let new_file = diff.new_file_contents().unwrap();
+
+        let expected = "line one\nline two";
+        assert_eq!(fs::read(&new_file.path()).unwrap(), expected.to_string().into_bytes());
+
     }
 
     mock! {
