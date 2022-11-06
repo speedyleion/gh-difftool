@@ -5,33 +5,59 @@
 
 //! Launches a difftool to
 
+use anyhow::Result;
 use crate::cmd::Cmd;
 use std::ffi::OsStr;
 use std::ffi::OsString;
-use std::process::Stdio;
+use std::process::{Command, Stdio};
+use tempfile::NamedTempFile;
+use crate::Change;
 
 #[derive(Debug, Default)]
-pub struct Diff<C> {
+pub struct Diff {
+    change: Change,
+}
+
+#[derive(Debug, Default)]
+pub struct Difftool<C> {
     command: C,
 }
 
-impl<C: Cmd> Diff<C> {
+impl<C: Cmd> Difftool<C> {
     pub fn new(command: C) -> Self {
         Self { command }
     }
 
-    pub fn launch(&mut self, local: &OsStr, remote: &OsStr) -> Result<(), String> {
+    pub fn launch(&mut self, local: &OsStr, remote: &OsStr) -> Result<()> {
         self.command.arg(OsString::from(local));
         self.command.arg(OsString::from(remote));
         self.command.stdout(Stdio::piped());
         self.command.stderr(Stdio::piped());
-        self.command
-            .output()
-            .map_err(|e| format!("Failed launching difftool: {}", e))?;
+        self.command.output()?;
         // Some difftools, like bcompare, will return non zero status when there is a diff and 0
         // only when there are no changes.  This prevents us from trusting the status
         Ok(())
     }
+}
+
+impl Diff {
+    pub fn new(change: Change) -> Self {
+        Self { change }
+    }
+
+    pub fn difftool(&self, program: impl AsRef<str>) -> Result<()> {
+        let original = self.create_temp_original()?;
+        let mut difftool = Difftool::new(Command::new(program.as_ref()));
+        difftool.launch(original.path().as_os_str(), OsStr::new(&self.change.filename))
+    }
+
+    fn create_temp_original(&self) -> Result<NamedTempFile> {
+        let file = NamedTempFile::new()?;
+
+        self.change.reverse_apply(&self.change.filename, file.path())?;
+        Ok(file)
+    }
+
 }
 
 #[cfg(test)]
@@ -43,6 +69,39 @@ mod tests {
     use std::os::unix::prelude::ExitStatusExt;
     use std::process::Stdio;
     use std::process::{ExitStatus, Output};
+    use std::fs;
+    use temp_testdir::TempDir;
+    use textwrap::dedent;
+
+    #[test]
+    fn create_temp() {
+        let temp = TempDir::default().permanent();
+        let b = temp.join("b");
+        let new = dedent(
+            "
+            line one
+            line changed
+            line three
+            ",
+        );
+        fs::write(&b, new).unwrap();
+        let diff = "@@ -1,3 +1,3 @@\n line one\n-line two\n+line changed\n line three";
+        let expected = dedent(
+            "
+            line one
+            line two
+            line three
+            ",
+        );
+        let change = Change {
+            filename: b.to_string_lossy().to_string(),
+            raw_url: "sure".to_string(),
+            patch: diff.to_string(),
+        };
+        let diff = Diff::new(change);
+        let original = diff.create_temp_original().unwrap();
+        assert_eq!(fs::read(&original.path()).unwrap(), expected.into_bytes());
+    }
 
     mock! {
         C {}
@@ -56,7 +115,7 @@ mod tests {
     }
 
     #[test]
-    fn diff_launches_ok() {
+    fn difftool_launches_ok() {
         let local = OsString::from("foo/baz/bar");
         let remote = OsString::from("some/other/file");
         let mut mock = MockC::new();
@@ -78,7 +137,7 @@ mod tests {
             })
         });
 
-        let mut diff = Diff::new(mock);
-        assert_eq!(diff.launch(local.as_os_str(), remote.as_os_str()), Ok(()));
+        let mut difftool = Difftool::new(mock);
+        assert!(difftool.launch(local.as_os_str(), remote.as_os_str()).is_ok());
     }
 }

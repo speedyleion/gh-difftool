@@ -7,7 +7,7 @@
 
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
-use std::io::Write;
+use std::io::{Error, ErrorKind, Write};
 use std::path::Path;
 use std::process::{Command, Stdio};
 
@@ -19,7 +19,7 @@ pub struct Change {
 }
 
 impl Change {
-    pub fn reverse_apply<P1, P2>(&self, src: P1, dest: P2) -> Result<(), String>
+    pub fn reverse_apply<P1, P2>(&self, src: P1, dest: P2) -> Result<()>
     where
         P1: AsRef<Path>,
         P2: AsRef<Path>,
@@ -35,8 +35,7 @@ impl Change {
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
         let mut child = cmd
-            .spawn()
-            .map_err(|e| format!("Failed to start `patch` process: {}", e))?;
+            .spawn()?;
         let mut stdin = child.stdin.take().expect("failed to get stdin for `patch`");
 
         let mut contents = self.patch.clone();
@@ -55,19 +54,21 @@ impl Change {
         });
 
         let output = child
-            .wait_with_output()
-            .map_err(|e| format!("Failed to run the `patch` process to finish: {}", e))?;
+            .wait_with_output()?;
 
         let status = output.status;
         if status.success() {
             Ok(())
         } else {
-            Err(format!(
-                "Failed to patch {:?} to {:?}: {}",
-                src.as_ref(),
-                dest.as_ref(),
-                String::from_utf8_lossy(&output.stderr)
-            ))
+            Err(Error::new(
+                ErrorKind::Other,
+                format!(
+                    "Failed to patch {:?} to {:?}: {}",
+                    src.as_ref(),
+                    dest.as_ref(),
+                    String::from_utf8_lossy(&output.stderr)
+                ),
+            ))?
         }
     }
 }
@@ -271,8 +272,9 @@ mod tests {
             patch: diff.to_string(),
         };
 
-        assert!(
-            matches!(change.reverse_apply(&b, &a), Err(message) if message.starts_with(&message_start))
-        );
+        let error = change.reverse_apply(&b, &a).unwrap_err();
+        let root_cause = error.root_cause();
+        let message = format!("{}", root_cause);
+        assert!(message.starts_with(&message_start));
     }
 }
