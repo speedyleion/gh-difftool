@@ -3,11 +3,11 @@ mod cmd;
 mod diff;
 mod gh_interface;
 
+use crate::change_set::Change;
 use clap::Parser;
 use std::ffi::OsStr;
 use std::process::Command;
 use tempfile::NamedTempFile;
-use crate::change_set::Change;
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -73,7 +73,11 @@ mod tests {
             line three
             ",
         );
-        let change = Change{ filename: b.to_string_lossy().to_string(), raw_url: "sure".to_string(), patch: diff.to_string()};
+        let change = Change {
+            filename: b.to_string_lossy().to_string(),
+            raw_url: "sure".to_string(),
+            patch: diff.to_string(),
+        };
         let original = create_temp_original(&change).unwrap();
         assert_eq!(fs::read(&original.path()).unwrap(), expected.into_bytes());
     }

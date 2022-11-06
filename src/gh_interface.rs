@@ -77,12 +77,8 @@ impl<C: Cmd> GhCli<C> {
     pub fn change_set(&mut self, repo: impl AsRef<str>, pr_number: usize) -> Result<ChangeSet> {
         let repo = repo.as_ref();
         let pr_path = format!("/repos/{repo}/pulls/{pr_number}/files");
-        let output = self.run_command([
-            "api",
-            "-H",
-            "Accept: application/vnd.github+json",
-            &pr_path,
-        ])?;
+        let output =
+            self.run_command(["api", "-H", "Accept: application/vnd.github+json", &pr_path])?;
         ChangeSet::try_from(output.as_str())
     }
 
@@ -123,14 +119,27 @@ mod tests {
     }
 
     fn change_set_mock(status: i32, stdout: &str, stderr: &str) -> MockC {
-        mocked_command(&["api", "-H", "Accept: application/vnd.github+json", "/repos/speedyleion/gh-difftool/pulls/10/files"], status, stdout.as_ref(), stderr.as_ref())
+        mocked_command(
+            &[
+                "api",
+                "-H",
+                "Accept: application/vnd.github+json",
+                "/repos/speedyleion/gh-difftool/pulls/10/files",
+            ],
+            status,
+            stdout.as_ref(),
+            stderr.as_ref(),
+        )
     }
 
     fn mocked_command(args: &[&str], status: i32, stdout: &str, stderr: &str) -> MockC {
         let mut mock = MockC::new();
         let stdout = stdout.to_string();
         let stderr = stderr.to_string();
-        let args = args.into_iter().map(|s| String::from(*s)).collect::<Vec<_>>();
+        let args = args
+            .into_iter()
+            .map(|s| String::from(*s))
+            .collect::<Vec<_>>();
         mock.expect_new_from_self().returning(move || {
             let mut mock = MockC::new();
             let args = args.clone();
@@ -157,11 +166,21 @@ mod tests {
     }
 
     fn pr_number_mock(status: i32, stdout: impl AsRef<str>, stderr: impl AsRef<str>) -> MockC {
-        mocked_command(&["pr", "view", "--json", "number"], status, stdout.as_ref(), stderr.as_ref())
+        mocked_command(
+            &["pr", "view", "--json", "number"],
+            status,
+            stdout.as_ref(),
+            stderr.as_ref(),
+        )
     }
 
     fn repo_mock(status: i32, stdout: impl AsRef<str>, stderr: impl AsRef<str>) -> MockC {
-        mocked_command(&["repo", "view", "--json", "owner,name"], status, stdout.as_ref(), stderr.as_ref())
+        mocked_command(
+            &["repo", "view", "--json", "owner,name"],
+            status,
+            stdout.as_ref(),
+            stderr.as_ref(),
+        )
     }
 
     // The first file in the output from
@@ -481,9 +500,7 @@ mod tests {
         mock.expect_new_from_self().times(1).returning(|| {
             let mut mock = MockC::new();
             mock.expect_arg()
-                .with(eq(OsString::from(
-                    "/repos/why/what/pulls/3/files",
-                )))
+                .with(eq(OsString::from("/repos/why/what/pulls/3/files")))
                 .times(1)
                 .returning(|_| MockC::new());
             mock.expect_output().times(1).returning(|| {

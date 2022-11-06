@@ -5,11 +5,11 @@
 
 //! Set of changes that goes from one version of files to another
 
+use anyhow::Result;
+use serde::{Deserialize, Serialize};
 use std::io::Write;
 use std::path::Path;
 use std::process::{Command, Stdio};
-use anyhow::Result;
-use serde::{Deserialize, Serialize};
 
 #[derive(Default, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct Change {
@@ -20,9 +20,9 @@ pub struct Change {
 
 impl Change {
     pub fn reverse_apply<P1, P2>(&self, src: P1, dest: P2) -> Result<(), String>
-        where
-            P1: AsRef<Path>,
-            P2: AsRef<Path>,
+    where
+        P1: AsRef<Path>,
+        P2: AsRef<Path>,
     {
         let mut cmd = Command::new("patch");
         cmd.args([
@@ -88,10 +88,10 @@ impl TryFrom<&str> for ChangeSet {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
     use std::fs;
     use temp_testdir::TempDir;
     use textwrap::dedent;
-    use super::*;
 
     #[test]
     fn empty_changeset_parses() {
@@ -275,5 +275,4 @@ mod tests {
             matches!(change.reverse_apply(&b, &a), Err(message) if message.starts_with(&message_start))
         );
     }
-
 }
