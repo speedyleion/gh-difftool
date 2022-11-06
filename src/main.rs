@@ -4,7 +4,7 @@ mod diff;
 mod gh_interface;
 
 use clap::Parser;
-use std::ffi::{OsStr, OsString};
+use std::ffi::OsStr;
 use std::process::Command;
 use tempfile::NamedTempFile;
 use crate::change_set::Change;
