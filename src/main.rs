@@ -81,13 +81,4 @@ mod tests {
         let original = create_temp_original(&change).unwrap();
         assert_eq!(fs::read(&original.path()).unwrap(), expected.into_bytes());
     }
-
-    #[test]
-    fn strip_diff_prefix() {
-        let with_prefix = "a/what/is/up";
-        assert_eq!(
-            normalize_file_name(with_prefix),
-            OsString::from("what/is/up")
-        );
-    }
 }
