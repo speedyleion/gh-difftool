@@ -33,24 +33,16 @@ fn run_diff(difftool: impl AsRef<str>) -> Result<(), String> {
     Ok(())
 }
 
-fn normalize_file_name<S: AsRef<str>>(filename: S) -> OsString {
-    OsString::from(&filename.as_ref()[2..])
-}
-
 fn diff_one(change: &Change, difftool: impl AsRef<str>) -> Result<(), String> {
     let original = create_temp_original(change)?;
-    let new = normalize_file_name(&change.filename);
-
     let mut difftool = diff::Diff::new(Command::new(OsStr::new(difftool.as_ref())));
-    difftool.launch(original.path().as_os_str(), &new)
+    difftool.launch(original.path().as_os_str(), OsStr::new(&change.filename))
 }
 
 fn create_temp_original(change: &Change) -> Result<NamedTempFile, String> {
     let file = NamedTempFile::new().map_err(|e| format!("Failed getting temp file: {}", e))?;
 
-    // The first 2 characters are "b/" from git's diff output
-    let normalized_path = normalize_file_name(&change.filename);
-    change.reverse_apply(normalized_path, file.path())?;
+    change.reverse_apply(&change.filename, file.path())?;
     Ok(file)
 }
 
