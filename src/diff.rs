@@ -11,13 +11,14 @@ use anyhow::Result;
 use std::ffi::OsStr;
 use std::ffi::OsString;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
-use tempfile::NamedTempFile;
+use tempfile::{Builder, NamedTempFile, TempDir};
 
 #[derive(Debug, Default)]
 pub struct Diff {
     change: Change,
+    temp_dir: Option<TempDir>,
 }
 
 #[derive(Debug, Default)]
@@ -44,28 +45,33 @@ impl<C: Cmd> Difftool<C> {
 
 impl Diff {
     pub fn new(change: Change) -> Self {
-        Self { change }
+        Self { change, temp_dir: None }
     }
 
-    pub fn difftool(&self, program: impl AsRef<str>) -> Result<()> {
+    pub fn difftool(&mut self, program: impl AsRef<str>) -> Result<()> {
+        if self.temp_dir.is_none() {
+            self.temp_dir = Some(Builder::new().prefix("gh-difftool").tempdir()?);
+        }
         let new = self.new_file_contents()?;
         let original = self.create_temp_original(&new)?;
         let mut difftool = Difftool::new(Command::new(program.as_ref()));
-        difftool.launch(original.path().as_os_str(), new.path().as_os_str())
+        difftool.launch(original.as_os_str(), new.as_os_str())
     }
 
-    pub fn new_file_contents(&self) -> Result<NamedTempFile> {
-        let file = NamedTempFile::new()?;
+    fn new_file_contents(&self) -> Result<PathBuf> {
+        let dir  = self.temp_dir.as_ref().expect("Temp dir should be initialized already");
+        let file = dir.as_ref().join(&self.change.filename);
 
         let contents = reqwest::blocking::get(&self.change.raw_url)?.text()?;
         fs::write(&file, contents)?;
         Ok(file)
     }
 
-    fn create_temp_original(&self, new: impl AsRef<Path>) -> Result<NamedTempFile> {
-        let file = NamedTempFile::new()?;
+    fn create_temp_original(&self, new: impl AsRef<Path>) -> Result<PathBuf> {
+        let dir  = self.temp_dir.as_ref().expect("Temp dir should be initialized already");
+        let file = dir.as_ref().join(format!("{}_{}", "base", &self.change.filename));
 
-        self.change.reverse_apply(new, file.path())?;
+        self.change.reverse_apply(new, &file)?;
         Ok(file)
     }
 }
@@ -112,7 +118,7 @@ mod tests {
         };
         let diff = Diff::new(change);
         let original = diff.create_temp_original(b).unwrap();
-        assert_eq!(fs::read(&original.path()).unwrap(), expected.into_bytes());
+        assert_eq!(fs::read(&original).unwrap(), expected.into_bytes());
     }
 
     #[test]
@@ -135,7 +141,7 @@ mod tests {
 
         mock.assert();
         assert_eq!(
-            fs::read(&new_file.path()).unwrap(),
+            fs::read(&new_file).unwrap(),
             contents.to_string().into_bytes()
         );
     }
@@ -162,7 +168,7 @@ mod tests {
 
         mock.assert();
         assert_eq!(
-            fs::read(&new_file.path()).unwrap(),
+            fs::read(&new_file).unwrap(),
             contents.to_string().into_bytes()
         );
     }
