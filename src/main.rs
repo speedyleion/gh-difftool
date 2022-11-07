@@ -3,11 +3,11 @@ mod cmd;
 mod diff;
 mod gh_interface;
 
-use anyhow::Result;
 use crate::change_set::Change;
+use crate::diff::Diff;
+use anyhow::Result;
 use clap::Parser;
 use std::process::Command;
-use crate::diff::Diff;
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]

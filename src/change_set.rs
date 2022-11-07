@@ -34,8 +34,7 @@ impl Change {
         cmd.stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
-        let mut child = cmd
-            .spawn()?;
+        let mut child = cmd.spawn()?;
         let mut stdin = child.stdin.take().expect("failed to get stdin for `patch`");
 
         let mut contents = self.patch.clone();
@@ -53,8 +52,7 @@ impl Change {
                 .expect("Failed to write to stdin");
         });
 
-        let output = child
-            .wait_with_output()?;
+        let output = child.wait_with_output()?;
 
         let status = output.status;
         if status.success() {

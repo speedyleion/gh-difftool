@@ -5,15 +5,15 @@
 
 //! Launches a difftool to
 
-use anyhow::Result;
 use crate::cmd::Cmd;
+use crate::Change;
+use anyhow::Result;
 use std::ffi::OsStr;
 use std::ffi::OsString;
 use std::fs;
 use std::path::Path;
 use std::process::{Command, Stdio};
 use tempfile::NamedTempFile;
-use crate::Change;
 
 #[derive(Debug, Default)]
 pub struct Diff {
@@ -68,21 +68,20 @@ impl Diff {
         self.change.reverse_apply(new, file.path())?;
         Ok(file)
     }
-
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use httpmock::prelude::GET;
+    use httpmock::MockServer;
     use mockall::mock;
     use mockall::predicate::eq;
+    use std::fs;
     use std::io;
     use std::os::unix::prelude::ExitStatusExt;
     use std::process::Stdio;
     use std::process::{ExitStatus, Output};
-    use std::fs;
-    use httpmock::MockServer;
-    use httpmock::prelude::GET;
     use temp_testdir::TempDir;
     use textwrap::dedent;
 
@@ -121,8 +120,7 @@ mod tests {
         let contents = "line one\nline two";
         let server = MockServer::start();
         let mock = server.mock(|when, then| {
-            when.method(GET)
-                .path("/one.c");
+            when.method(GET).path("/one.c");
             then.status(200)
                 .header("content-type", "text/html")
                 .body(contents);
@@ -136,8 +134,10 @@ mod tests {
         let new_file = diff.new_file_contents().unwrap();
 
         mock.assert();
-        assert_eq!(fs::read(&new_file.path()).unwrap(), contents.to_string().into_bytes());
-
+        assert_eq!(
+            fs::read(&new_file.path()).unwrap(),
+            contents.to_string().into_bytes()
+        );
     }
 
     #[test]
@@ -146,8 +146,7 @@ mod tests {
 
         let server = MockServer::start();
         let mock = server.mock(|when, then| {
-            when.method(GET)
-                .path("/some_raw_url/path");
+            when.method(GET).path("/some_raw_url/path");
             then.status(200)
                 .header("content-type", "text/html")
                 .body(contents);
@@ -162,7 +161,10 @@ mod tests {
         let new_file = diff.new_file_contents().unwrap();
 
         mock.assert();
-        assert_eq!(fs::read(&new_file.path()).unwrap(), contents.to_string().into_bytes());
+        assert_eq!(
+            fs::read(&new_file.path()).unwrap(),
+            contents.to_string().into_bytes()
+        );
     }
 
     mock! {
@@ -200,6 +202,8 @@ mod tests {
         });
 
         let mut difftool = Difftool::new(mock);
-        assert!(difftool.launch(local.as_os_str(), remote.as_os_str()).is_ok());
+        assert!(difftool
+            .launch(local.as_os_str(), remote.as_os_str())
+            .is_ok());
     }
 }
