@@ -52,9 +52,11 @@ impl Diff {
         difftool.launch(original.path().as_os_str(), OsStr::new(&self.change.filename))
     }
 
-    pub(crate) fn new_file_contents(&self) -> Result<NamedTempFile> {
+    pub fn new_file_contents(&self) -> Result<NamedTempFile> {
         let file = NamedTempFile::new()?;
-        fs::write(&file, "line one\nline two")?;
+
+        let contents = reqwest::blocking::get(&self.change.raw_url)?.text()?;
+        fs::write(&file, contents)?;
         Ok(file)
     }
 
@@ -114,25 +116,33 @@ mod tests {
 
     #[test]
     fn get_new_content() {
+        let contents = "line one\nline two";
+        let server = MockServer::start();
+        let mock = server.mock(|when, then| {
+            when.method(GET)
+                .path("/one.c");
+            then.status(200)
+                .header("content-type", "text/html")
+                .body(contents);
+        });
         let change = Change {
             filename: "foo/bar/fish.ext".to_string(),
-            raw_url: "sure".to_string(),
+            raw_url: server.url("/one.c"),
             patch: "@@ -1,3 +1,3 @@\n doesn't matter".to_string(),
         };
         let diff = Diff::new(change);
         let new_file = diff.new_file_contents().unwrap();
 
-        let expected = "line one\nline two";
-        assert_eq!(fs::read(&new_file.path()).unwrap(), expected.to_string().into_bytes());
+        mock.assert();
+        assert_eq!(fs::read(&new_file.path()).unwrap(), contents.to_string().into_bytes());
 
     }
 
     #[test]
     fn getting_a_second_set_of_new_content() {
-        let server = MockServer::start();
-
         let contents = "something\nelse";
 
+        let server = MockServer::start();
         let mock = server.mock(|when, then| {
             when.method(GET)
                 .path("/some_raw_url/path");
