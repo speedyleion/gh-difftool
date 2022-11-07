@@ -57,9 +57,12 @@ impl Diff {
     }
 
     fn new_file_contents(&self) -> Result<PathBuf> {
-        let dir  = self.temp_dir.as_ref();
+        let dir = self.temp_dir.as_ref();
         let file = dir.join(&self.change.filename);
-        fs::create_dir_all(file.parent().expect("Should always have a parent temp path"))?;
+        fs::create_dir_all(
+            file.parent()
+                .expect("Should always have a parent temp path"),
+        )?;
 
         let contents = reqwest::blocking::get(&self.change.raw_url)?.text()?;
         fs::write(&file, contents)?;
@@ -67,9 +70,12 @@ impl Diff {
     }
 
     fn create_temp_original(&self, new: impl AsRef<Path>) -> Result<PathBuf> {
-        let dir  = self.temp_dir.as_ref();
+        let dir = self.temp_dir.as_ref();
         let file = dir.join(format!("{}_{}", "base", &self.change.filename));
-        fs::create_dir_all(file.parent().expect("Should always have a parent temp path"))?;
+        fs::create_dir_all(
+            file.parent()
+                .expect("Should always have a parent temp path"),
+        )?;
 
         self.change.reverse_apply(new, &file)?;
         Ok(file)
