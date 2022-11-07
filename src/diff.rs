@@ -10,6 +10,7 @@ use crate::cmd::Cmd;
 use std::ffi::OsStr;
 use std::ffi::OsString;
 use std::fs;
+use std::path::Path;
 use std::process::{Command, Stdio};
 use tempfile::NamedTempFile;
 use crate::Change;
@@ -47,9 +48,10 @@ impl Diff {
     }
 
     pub fn difftool(&self, program: impl AsRef<str>) -> Result<()> {
-        let original = self.create_temp_original()?;
+        let new = self.new_file_contents()?;
+        let original = self.create_temp_original(&new)?;
         let mut difftool = Difftool::new(Command::new(program.as_ref()));
-        difftool.launch(original.path().as_os_str(), OsStr::new(&self.change.filename))
+        difftool.launch(original.path().as_os_str(), new.path().as_os_str())
     }
 
     pub fn new_file_contents(&self) -> Result<NamedTempFile> {
@@ -60,10 +62,10 @@ impl Diff {
         Ok(file)
     }
 
-    fn create_temp_original(&self) -> Result<NamedTempFile> {
+    fn create_temp_original(&self, new: impl AsRef<Path>) -> Result<NamedTempFile> {
         let file = NamedTempFile::new()?;
 
-        self.change.reverse_apply(&self.change.filename, file.path())?;
+        self.change.reverse_apply(new, file.path())?;
         Ok(file)
     }
 
@@ -105,12 +107,12 @@ mod tests {
             ",
         );
         let change = Change {
-            filename: b.to_string_lossy().to_string(),
+            filename: "ignore_me".to_string(),
             raw_url: "sure".to_string(),
             patch: diff.to_string(),
         };
         let diff = Diff::new(change);
-        let original = diff.create_temp_original().unwrap();
+        let original = diff.create_temp_original(b).unwrap();
         assert_eq!(fs::read(&original.path()).unwrap(), expected.into_bytes());
     }
 
