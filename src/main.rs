@@ -28,7 +28,7 @@ fn run_diff(difftool: impl AsRef<str>) -> Result<()> {
     let mut gh = gh_interface::GhCli::new(Command::new("gh"));
     let change_set = gh.local_change_set()?;
     for change in change_set.changes {
-        let mut diff = Diff::new(change);
+        let mut diff = Diff::new(change)?;
         diff.difftool(&difftool)?;
     }
     Ok(())

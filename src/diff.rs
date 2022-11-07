@@ -13,12 +13,12 @@ use std::ffi::OsString;
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
-use tempfile::{Builder, NamedTempFile, TempDir};
+use tempfile::{Builder, TempDir};
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct Diff {
     change: Change,
-    temp_dir: Option<TempDir>,
+    temp_dir: TempDir,
 }
 
 #[derive(Debug, Default)]
@@ -44,14 +44,12 @@ impl<C: Cmd> Difftool<C> {
 }
 
 impl Diff {
-    pub fn new(change: Change) -> Self {
-        Self { change, temp_dir: None }
+    pub fn new(change: Change) -> Result<Self> {
+        let temp_dir = Builder::new().prefix("gh-difftool").tempdir()?;
+        Ok(Self { change, temp_dir })
     }
 
     pub fn difftool(&mut self, program: impl AsRef<str>) -> Result<()> {
-        if self.temp_dir.is_none() {
-            self.temp_dir = Some(Builder::new().prefix("gh-difftool").tempdir()?);
-        }
         let new = self.new_file_contents()?;
         let original = self.create_temp_original(&new)?;
         let mut difftool = Difftool::new(Command::new(program.as_ref()));
@@ -59,8 +57,9 @@ impl Diff {
     }
 
     fn new_file_contents(&self) -> Result<PathBuf> {
-        let dir  = self.temp_dir.as_ref().expect("Temp dir should be initialized already");
-        let file = dir.as_ref().join(&self.change.filename);
+        let dir  = self.temp_dir.as_ref();
+        let file = dir.join(&self.change.filename);
+        fs::create_dir_all(file.parent().expect("Should always have a parent temp path"))?;
 
         let contents = reqwest::blocking::get(&self.change.raw_url)?.text()?;
         fs::write(&file, contents)?;
@@ -68,8 +67,9 @@ impl Diff {
     }
 
     fn create_temp_original(&self, new: impl AsRef<Path>) -> Result<PathBuf> {
-        let dir  = self.temp_dir.as_ref().expect("Temp dir should be initialized already");
-        let file = dir.as_ref().join(format!("{}_{}", "base", &self.change.filename));
+        let dir  = self.temp_dir.as_ref();
+        let file = dir.join(format!("{}_{}", "base", &self.change.filename));
+        fs::create_dir_all(file.parent().expect("Should always have a parent temp path"))?;
 
         self.change.reverse_apply(new, &file)?;
         Ok(file)
@@ -116,7 +116,7 @@ mod tests {
             raw_url: "sure".to_string(),
             patch: diff.to_string(),
         };
-        let diff = Diff::new(change);
+        let diff = Diff::new(change).unwrap();
         let original = diff.create_temp_original(b).unwrap();
         assert_eq!(fs::read(&original).unwrap(), expected.into_bytes());
     }
@@ -136,7 +136,7 @@ mod tests {
             raw_url: server.url("/one.c"),
             patch: "@@ -1,3 +1,3 @@\n doesn't matter".to_string(),
         };
-        let diff = Diff::new(change);
+        let diff = Diff::new(change).unwrap();
         let new_file = diff.new_file_contents().unwrap();
 
         mock.assert();
@@ -163,7 +163,7 @@ mod tests {
             raw_url: server.url("/some_raw_url/path"),
             patch: "@@ -1,3 +1,3 @@\n doesn't matter".to_string(),
         };
-        let diff = Diff::new(change);
+        let diff = Diff::new(change).unwrap();
         let new_file = diff.new_file_contents().unwrap();
 
         mock.assert();
