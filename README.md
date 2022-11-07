@@ -3,8 +3,9 @@
 A difftool extension to the GitHub CLI, [gh](https://cli.github.com/).
 
 Launches a difftool to show the differences between the branch the PR is being
-merged into and the current on disk files.  If there are no local modifications
-this should be the same diffs that the GitHub web UI shows.
+merged into and the tip of the branch on GitHub. The files will be created in a
+temporary directory with the base branch version of the files prefixed with
+`base_`.
 
 ```shell
 Usage: gh difftool [OPTIONS]
@@ -49,3 +50,4 @@ launcher script or similar that matches this format.
 
 - The GitHub CLI, [gh](https://cli.github.com/)
 - The [patch](https://www.man7.org/linux/man-pages/man1/patch.1.html) utility
+- OpenSSL headers for building
