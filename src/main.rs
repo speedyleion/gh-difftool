@@ -15,6 +15,14 @@ struct Cli {
     /// The difftool command to run
     #[arg(short = 't', long = "tool", env = "DIFFTOOL")]
     difftool: Option<String>,
+
+    /// The repo to diff, defaults to the repo resolved with the `gh` command line
+    #[arg(long = "repo", requires = "pr")]
+    repo: Option<String>,
+
+    /// The PR to diff, defaults to the one associated with the current branch
+    #[arg(long = "pr")]
+    pr: Option<usize>,
 }
 
 fn main() -> Result<()> {
