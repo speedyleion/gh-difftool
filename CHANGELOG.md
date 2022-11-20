@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.3] - 2022-11-19
+
 ### Added
 
 - Arguments to diff any pr. `--pr` and `--repo` have been added which allow for
@@ -29,7 +31,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Initial release
 
-[unreleased]: https://github.com/olivierlacan/keep-a-changelog/compare/v0.1.2...HEAD
+[unreleased]: https://github.com/olivierlacan/keep-a-changelog/compare/v0.1.3...HEAD
+[0.1.3]: https://github.com/speedyleion/gh-difftool/releases/tag/v0.1.3
 [0.1.2]: https://github.com/speedyleion/gh-difftool/releases/tag/v0.1.2
 [0.1.1]: https://github.com/speedyleion/gh-difftool/releases/tag/v0.1.1
 [0.1.0]: https://github.com/speedyleion/gh-difftool/releases/tag/v0.1.0
