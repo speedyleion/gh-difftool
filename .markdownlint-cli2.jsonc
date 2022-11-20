@@ -1,0 +1,10 @@
+{
+  "config": {
+    "no-duplicate-header": {
+        // Allow multiple "Added" sections in the changelog
+        "siblings_only": true
+    }
+  },
+
+  "globs": ["**/*.md"]
+}

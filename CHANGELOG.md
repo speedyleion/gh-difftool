@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.4] - 2022-11-20
+
+### Changed
+
+- Statically link in OpenSSL. Dynamically linking to OpenSSL was causing
+  portability issues. Some distro versions use OpenSSL 1.1.# while others use
+  OpenSSL 3.#.
+
 ## [0.1.3] - 2022-11-19
 
 ### Added
@@ -31,7 +39,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Initial release
 
-[unreleased]: https://github.com/olivierlacan/keep-a-changelog/compare/v0.1.3...HEAD
+[unreleased]: https://github.com/olivierlacan/keep-a-changelog/compare/v0.1.4...HEAD
+[0.1.4]: https://github.com/speedyleion/gh-difftool/releases/tag/v0.1.4
 [0.1.3]: https://github.com/speedyleion/gh-difftool/releases/tag/v0.1.3
 [0.1.2]: https://github.com/speedyleion/gh-difftool/releases/tag/v0.1.2
 [0.1.1]: https://github.com/speedyleion/gh-difftool/releases/tag/v0.1.1
