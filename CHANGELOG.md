@@ -11,9 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-- Statically link in OpenSSL. Prior versions would link to OpenSSL causing
-  portability issues for some distro versions using OpenSSL 1.1.# while
-  others ues OpenSSL 3.#.
+- Statically link in OpenSSL. Dynamically linking to OpenSSL was causing
+  portability issues. Some distro versions use OpenSSL 1.1.# while others use
+  OpenSSL 3.#.
 
 ## [0.1.3] - 2022-11-19
 
