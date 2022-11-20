@@ -17,7 +17,7 @@ struct Cli {
     difftool: Option<String>,
 
     /// The repo to diff, defaults to the repo resolved with the `gh` command line
-    #[arg(long = "repo", requires = "pr")]
+    #[arg(long = "repo", requires = "pr", value_names = ["ORG/REPO_NAME"])]
     repo: Option<String>,
 
     /// The PR to diff, defaults to the one associated with the current branch
