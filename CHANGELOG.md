@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Arguments to diff any pr. `--pr` and `--repo` have been added which allow for
+  diffing other PRs and even other repos.
+
 ## [0.1.2] - 2022-11-06
 
 ### Changed
