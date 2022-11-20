@@ -19,7 +19,7 @@ Options:
   -V, --version               Print version information
 ```
 
-When no args the tool will try to diff the current branch's PR.
+With no args, the tool will try to diff the current branch's PR.
 
 When provided a PR number will diff that PR. When provided a repo (requires a
 pr), will diff that repo's PR.
