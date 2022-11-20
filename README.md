@@ -2,17 +2,19 @@
 
 A difftool extension to the GitHub CLI, [gh](https://cli.github.com/).
 
-Launches a difftool to show the differences of PRs. The files will be created in a
-temporary directory with the base branch version of the files prefixed with
-`base_`.
+Launches a difftool to show the differences of PRs. The files will be created
+in a temporary directory with the base branch version of the files prefixed
+with `base_`.
 
 ```shell
 Usage: gh-difftool [OPTIONS]
 
 Options:
   -t, --tool <DIFFTOOL>       The difftool command to run [env: DIFFTOOL=]
-      --repo <ORG/REPO_NAME>  The GitHub repo to diff, defaults to the GitHub remote of the current git repo
-      --pr <PR>               The PR to diff, defaults to the one associated with the current branch
+      --repo <ORG/REPO_NAME>  The GitHub repo to diff, defaults to the GitHub 
+                              remote of the current git repo
+      --pr <PR>               The PR to diff, defaults to the one associated 
+                              with the current branch
   -h, --help                  Print help information
   -V, --version               Print version information
 ```
@@ -27,6 +29,7 @@ For instance one can do:
 ```shell
 gh difftool --repo speedyleion/gh-difftool --pr 10
 ```
+
 from any repo and get the same result.
 
 ## Installation
