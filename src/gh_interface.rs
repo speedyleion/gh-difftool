@@ -45,12 +45,6 @@ impl<C: Cmd> GhCli<C> {
         Self { command }
     }
 
-    pub fn local_change_set(&mut self) -> Result<ChangeSet> {
-        let pr = self.current_pr()?;
-        let repo = self.current_repo()?;
-        self.change_set(repo, pr)
-    }
-
     fn run_command<I, T>(&mut self, args: I) -> Result<String>
     where
         I: IntoIterator<Item = T>,
@@ -82,13 +76,13 @@ impl<C: Cmd> GhCli<C> {
         ChangeSet::try_from(output.as_str())
     }
 
-    fn current_pr(&mut self) -> Result<usize> {
+    pub fn current_pr(&mut self) -> Result<usize> {
         let output = self.run_command(["pr", "view", "--json", "number"])?;
         let pr: Pr = serde_json::from_str(output.as_str())?;
         Ok(pr.number)
     }
 
-    fn current_repo(&mut self) -> Result<String> {
+    pub fn current_repo(&mut self) -> Result<String> {
         let output = self.run_command(["repo", "view", "--json", "owner,name"])?;
         let repo: Repo = serde_json::from_str(output.as_str())?;
         Ok(repo.to_string())
@@ -411,119 +405,6 @@ mod tests {
         assert_eq!(
             format!("{}", root_cause),
             "none of the git remotes configured for this repository point to a known GitHub host. To tell gh about a new GitHub host, please use `gh auth login`"
-        );
-    }
-
-    #[test]
-    fn look_up_local_change_set() {
-        // The intent isn't to verify the arguments passed, that was done in the individual
-        // functions we just want to ensure everything is plumbed up correctly to build the local
-        // repo
-        let mut mock = MockC::new();
-
-        for output in [
-            "{\"number\": 11}",
-            "{\"name\": \"some-repo\", \"owner\": {\"id\": \"MDQ6VXNlcjE0MDA1Mzk=\", \"login\": \"a_cool_owner\"} }",]
-            {
-            mock.expect_new_from_self().times(1).returning(|| {
-                let mut mock = MockC::new();
-                mock.expect_output().times(1).returning(|| {
-                    Ok(Output {
-                        status: ExitStatus::from_raw(0),
-                        stdout: output.as_bytes().to_vec(),
-                        stderr: vec![],
-                    })
-                });
-                mock.expect_arg().returning(|_| MockC::new());
-                mock.expect_stdout().returning(|_| MockC::new());
-                mock.expect_stderr().returning(|_| MockC::new());
-                mock
-            });
-        }
-        mock.expect_new_from_self().times(1).returning(|| {
-            let mut mock = MockC::new();
-            mock.expect_arg()
-                .with(eq(OsString::from(
-                    "/repos/a_cool_owner/some-repo/pulls/11/files",
-                )))
-                .times(1)
-                .returning(|_| MockC::new());
-            mock.expect_output().times(1).returning(|| {
-                Ok(Output {
-                    status: ExitStatus::from_raw(0),
-                    stdout: ONE_FILE.as_bytes().to_vec(),
-                    stderr: vec![],
-                })
-            });
-            mock.expect_arg().returning(|_| MockC::new());
-            mock.expect_stdout().returning(|_| MockC::new());
-            mock.expect_stderr().returning(|_| MockC::new());
-            mock
-        });
-        let mut gh = GhCli::new(mock);
-        assert_eq!(gh.local_change_set().unwrap(),
-                   ChangeSet {
-                       changes: vec![Change {
-                           filename: String::from("Cargo.toml"),
-                           raw_url: String::from("https://github.com/speedyleion/gh-difftool/raw/befb7bf69c3c8ba97c714d57c8dadd9621021c84/Cargo.toml"),
-                           patch: String::from("@@ -6,3 +6,7 @@ edition = \"2021\"\n [dev-dependencies]\n assert_cmd = \"2.0.4\"\n mockall = \"0.11.2\"\n+textwrap = \"0.15.1\"\n+\n+[dependencies]\n+patch = \"0.6.0\""),
-                       }]
-                   }
-        );
-    }
-    #[test]
-    fn look_up_local_pr_3() {
-        // The intent isn't to verify the arguments passed, that was done in the individual
-        // functions we just want to ensure everything is plumbed up correctly to build the local
-        // repo
-        let mut mock = MockC::new();
-
-        for output in [
-            "{\"number\": 3}",
-            "{ \"name\": \"what\", \"owner\": { \"id\": \"MDQ6VXNlcjE0MDA1Mzk=\", \"login\": \"why\" } }",]
-            {
-            mock.expect_new_from_self().times(1).returning(|| {
-                let mut mock = MockC::new();
-                mock.expect_output().times(1).returning(|| {
-                    Ok(Output {
-                        status: ExitStatus::from_raw(0),
-                        stdout: output.as_bytes().to_vec(),
-                        stderr: vec![],
-                    })
-                });
-                mock.expect_arg().returning(|_| MockC::new());
-                mock.expect_stdout().returning(|_| MockC::new());
-                mock.expect_stderr().returning(|_| MockC::new());
-                mock
-            });
-        }
-        mock.expect_new_from_self().times(1).returning(|| {
-            let mut mock = MockC::new();
-            mock.expect_arg()
-                .with(eq(OsString::from("/repos/why/what/pulls/3/files")))
-                .times(1)
-                .returning(|_| MockC::new());
-            mock.expect_output().times(1).returning(|| {
-                Ok(Output {
-                    status: ExitStatus::from_raw(0),
-                    stdout: ONE_FILE.as_bytes().to_vec(),
-                    stderr: vec![],
-                })
-            });
-            mock.expect_arg().returning(|_| MockC::new());
-            mock.expect_stdout().returning(|_| MockC::new());
-            mock.expect_stderr().returning(|_| MockC::new());
-            mock
-        });
-        let mut gh = GhCli::new(mock);
-        assert_eq!(gh.local_change_set().unwrap(),
-                   ChangeSet {
-                       changes: vec![Change {
-                           filename: String::from("Cargo.toml"),
-                           raw_url: String::from("https://github.com/speedyleion/gh-difftool/raw/befb7bf69c3c8ba97c714d57c8dadd9621021c84/Cargo.toml"),
-                           patch: String::from("@@ -6,3 +6,7 @@ edition = \"2021\"\n [dev-dependencies]\n assert_cmd = \"2.0.4\"\n mockall = \"0.11.2\"\n+textwrap = \"0.15.1\"\n+\n+[dependencies]\n+patch = \"0.6.0\""),
-                       }]
-                   }
         );
     }
 }
