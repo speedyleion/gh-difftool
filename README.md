@@ -2,19 +2,32 @@
 
 A difftool extension to the GitHub CLI, [gh](https://cli.github.com/).
 
-Launches a difftool to show the differences between the branch the PR is being
-merged into and the tip of the branch on GitHub. The files will be created in a
+Launches a difftool to show the differences of PRs. The files will be created in a
 temporary directory with the base branch version of the files prefixed with
 `base_`.
 
 ```shell
-Usage: gh difftool [OPTIONS]
+Usage: gh-difftool [OPTIONS]
 
 Options:
-  -t, --tool <DIFFTOOL>  The difftool command to run [env: DIFFTOOL=]
-  -h, --help             Print help information
-  -V, --version          Print version information
+  -t, --tool <DIFFTOOL>       The difftool command to run [env: DIFFTOOL=]
+      --repo <ORG/REPO_NAME>  The GitHub repo to diff, defaults to the GitHub remote of the current git repo
+      --pr <PR>               The PR to diff, defaults to the one associated with the current branch
+  -h, --help                  Print help information
+  -V, --version               Print version information
 ```
+
+When no args the tool will try to diff the current branch's PR.
+
+When provided a PR number will diff that PR. When provided a repo (requires a
+pr), will diff that repo's PR.
+
+For instance one can do:
+
+```shell
+gh difftool --repo speedyleion/gh-difftool --pr 10
+```
+from any repo and get the same result.
 
 ## Installation
 

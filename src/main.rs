@@ -16,7 +16,7 @@ struct Cli {
     #[arg(short = 't', long = "tool", env = "DIFFTOOL")]
     difftool: Option<String>,
 
-    /// The repo to diff, defaults to the repo resolved with the `gh` command line
+    /// The GitHub repo to diff, defaults to the GitHub remote of the current git repo
     #[arg(long = "repo", requires = "pr", value_names = ["ORG/REPO_NAME"])]
     repo: Option<String>,
 
