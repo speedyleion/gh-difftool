@@ -82,13 +82,13 @@ impl<C: Cmd> GhCli<C> {
         ChangeSet::try_from(output.as_str())
     }
 
-    fn current_pr(&mut self) -> Result<usize> {
+    pub fn current_pr(&mut self) -> Result<usize> {
         let output = self.run_command(["pr", "view", "--json", "number"])?;
         let pr: Pr = serde_json::from_str(output.as_str())?;
         Ok(pr.number)
     }
 
-    fn current_repo(&mut self) -> Result<String> {
+    pub fn current_repo(&mut self) -> Result<String> {
         let output = self.run_command(["repo", "view", "--json", "owner,name"])?;
         let repo: Repo = serde_json::from_str(output.as_str())?;
         Ok(repo.to_string())

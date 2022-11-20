@@ -29,15 +29,22 @@ fn main() -> Result<()> {
     let cli = Cli::parse();
     let difftool = cli.difftool.as_deref().unwrap_or("bcompare");
 
-    run_diff(difftool)
-}
-
-fn run_diff(difftool: impl AsRef<str>) -> Result<()> {
     let mut gh = gh_interface::GhCli::new(Command::new("gh"));
-    let change_set = gh.local_change_set()?;
+    let pr = match cli.pr {
+        None => gh.current_pr()?,
+        Some(pr) => pr,
+    };
+
+    let repo = match cli.repo {
+        None => gh.current_repo()?,
+        Some(repo) => repo,
+    };
+
+    let change_set = gh.change_set(repo, pr)?;
     for change in change_set.changes {
         let mut diff = Diff::new(change)?;
         diff.difftool(&difftool)?;
     }
     Ok(())
 }
+
