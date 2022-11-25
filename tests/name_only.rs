@@ -8,8 +8,7 @@ use assert_cmd::Command;
 /// These tests require a network connection to github
 
 #[test]
-fn pr_10(){
-
+fn pr_10() {
     let mut cmd = Command::cargo_bin("gh-difftool").unwrap();
     let assert = cmd
         .arg("--name-only")
@@ -18,14 +17,13 @@ fn pr_10(){
         .arg("--repo")
         .arg("speedyleion/gh-difftool")
         .assert();
-    assert
-        .success()
-        .stdout(".github/workflows/release.yml\n.gitignore\nCargo.toml\nREADME.md\nscripts/build_dist.h\n");
+    assert.success().stdout(
+        ".github/workflows/release.yml\n.gitignore\nCargo.toml\nREADME.md\nscripts/build_dist.h\n",
+    );
 }
 
 #[test]
-fn pr_9(){
-
+fn pr_9() {
     let mut cmd = Command::cargo_bin("gh-difftool").unwrap();
     let assert = cmd
         .arg("--name-only")
@@ -34,7 +32,5 @@ fn pr_9(){
         .arg("--repo")
         .arg("speedyleion/gh-difftool")
         .assert();
-    assert
-        .success()
-        .stdout("README.md\nsrc/main.rs\n");
+    assert.success().stdout("README.md\nsrc/main.rs\n");
 }

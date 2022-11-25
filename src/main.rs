@@ -56,7 +56,7 @@ fn main() -> Result<()> {
             let filename = change.filename;
             println!("{filename}");
         }
-        return Ok(())
+        return Ok(());
     }
 
     for change in change_set.changes {
