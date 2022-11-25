@@ -23,6 +23,10 @@ struct Cli {
     /// The PR to diff, defaults to the one associated with the current branch
     #[arg(long = "pr")]
     pr: Option<usize>,
+
+    /// Show only the names of files that changed in a PR
+    #[arg(long = "name-only")]
+    name_only: bool,
 }
 
 fn main() -> Result<()> {
