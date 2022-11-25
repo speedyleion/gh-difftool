@@ -45,6 +45,15 @@ fn main() -> Result<()> {
     };
 
     let change_set = gh.change_set(repo, pr)?;
+
+    if cli.name_only {
+        for change in change_set.changes {
+            let filename = change.filename;
+            println!("{filename}");
+        }
+        return Ok(())
+    }
+
     for change in change_set.changes {
         let mut diff = Diff::new(change)?;
         diff.difftool(&difftool)?;
