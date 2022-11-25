@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- `--name-only` flag which will output the filenames of the changed files to
+  stdout. This is similar to the `gh pr diff --name-only` command.
+
 ## [0.1.4] - 2022-11-20
 
 ### Changed
