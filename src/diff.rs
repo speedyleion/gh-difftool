@@ -49,7 +49,7 @@ impl Diff {
         Ok(Self { change, temp_dir })
     }
 
-    pub fn difftool(&mut self, program: impl AsRef<str>) -> Result<()> {
+    pub fn difftool(&self, program: impl AsRef<str>) -> Result<()> {
         let new = self.new_file_contents()?;
         let original = self.create_temp_original(&new)?;
         let mut difftool = Difftool::new(Command::new(program.as_ref()));
