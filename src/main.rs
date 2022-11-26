@@ -59,9 +59,10 @@ fn main() -> Result<()> {
         return Ok(());
     }
 
+    let diff = Diff::new(difftool)?;
     for change in change_set.changes {
-        let mut diff = Diff::new(change)?;
-        diff.difftool(difftool)?;
+        let mut difftool = diff.difftool(&change)?;
+        difftool.launch()?;
     }
     Ok(())
 }
