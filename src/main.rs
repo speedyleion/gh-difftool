@@ -1,3 +1,8 @@
+//          Copyright Nick G 2022.
+// Distributed under the Boost Software License, Version 1.0.
+//    (See accompanying file LICENSE or copy at
+//          https://www.boost.org/LICENSE_1_0.txt)
+
 mod change_set;
 mod cmd;
 mod diff;
@@ -23,6 +28,10 @@ struct Cli {
     /// The PR to diff, defaults to the one associated with the current branch
     #[arg(long = "pr")]
     pr: Option<usize>,
+
+    /// Show only the names of files that changed in a PR
+    #[arg(long = "name-only")]
+    name_only: bool,
 }
 
 fn main() -> Result<()> {
@@ -41,9 +50,18 @@ fn main() -> Result<()> {
     };
 
     let change_set = gh.change_set(repo, pr)?;
+
+    if cli.name_only {
+        for change in change_set.changes {
+            let filename = change.filename;
+            println!("{filename}");
+        }
+        return Ok(());
+    }
+
     for change in change_set.changes {
         let mut diff = Diff::new(change)?;
-        diff.difftool(&difftool)?;
+        diff.difftool(difftool)?;
     }
     Ok(())
 }
