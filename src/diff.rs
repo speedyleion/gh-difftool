@@ -21,7 +21,7 @@ pub struct Diff {
 }
 
 #[derive(Debug, Default)]
-struct Difftool<C> {
+pub struct Difftool<C> {
     command: C,
     local: OsString,
     remote: OsString,
@@ -50,11 +50,10 @@ impl Diff {
         Ok(Self { program: program.as_ref().to_string(), temp_dir })
     }
 
-    pub fn difftool(&self, change: &Change) -> Result<()> {
+    pub fn difftool(&self, change: &Change) -> Result<Difftool<Command>> {
         let new = self.new_file_contents(change)?;
         let original = self.create_temp_original(change, &new)?;
-        let mut difftool = Difftool::new(Command::new(&self.program),original.into_os_string(), new.into_os_string());
-        difftool.launch()
+        Ok(Difftool::new(Command::new(&self.program),original.into_os_string(), new.into_os_string()))
     }
 
     fn new_file_contents(&self, change: &Change) -> Result<PathBuf> {
@@ -214,9 +213,9 @@ mod tests {
             })
         });
 
-        let mut difftool = Difftool::new(mock);
+        let mut difftool = Difftool::new(mock, local, remote);
         assert!(difftool
-            .launch(local.as_os_str(), remote.as_os_str())
+            .launch()
             .is_ok());
     }
 }
