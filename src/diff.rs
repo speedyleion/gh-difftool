@@ -8,7 +8,6 @@
 use crate::cmd::Cmd;
 use crate::Change;
 use anyhow::Result;
-use std::ffi::OsStr;
 use std::ffi::OsString;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -24,16 +23,18 @@ pub struct Diff {
 #[derive(Debug, Default)]
 struct Difftool<C> {
     command: C,
+    local: OsString,
+    remote: OsString,
 }
 
 impl<C: Cmd> Difftool<C> {
-    pub fn new(command: C) -> Self {
-        Self { command }
+    fn new(command: C, local: OsString, remote: OsString) -> Self {
+        Self { command, local, remote }
     }
 
-    pub fn launch(&mut self, local: &OsStr, remote: &OsStr) -> Result<()> {
-        self.command.arg(OsString::from(local));
-        self.command.arg(OsString::from(remote));
+    pub fn launch(&mut self) -> Result<()> {
+        self.command.arg(self.local.clone());
+        self.command.arg(self.remote.clone());
         self.command.stdout(Stdio::piped());
         self.command.stderr(Stdio::piped());
         self.command.output()?;
@@ -52,8 +53,8 @@ impl Diff {
     pub fn difftool(&self, change: &Change) -> Result<()> {
         let new = self.new_file_contents(change)?;
         let original = self.create_temp_original(change, &new)?;
-        let mut difftool = Difftool::new(Command::new(&self.program));
-        difftool.launch(original.as_os_str(), new.as_os_str())
+        let mut difftool = Difftool::new(Command::new(&self.program),original.into_os_string(), new.into_os_string());
+        difftool.launch()
     }
 
     fn new_file_contents(&self, change: &Change) -> Result<PathBuf> {
