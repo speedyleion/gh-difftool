@@ -63,7 +63,6 @@ fn main() -> Result<()> {
     for change in change_set.changes {
         let mut difftool = diff.difftool(&change)?;
         difftool.launch()?;
-
     }
     Ok(())
 }

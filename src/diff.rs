@@ -29,7 +29,11 @@ pub struct Difftool<C> {
 
 impl<C: Cmd> Difftool<C> {
     fn new(command: C, local: OsString, remote: OsString) -> Self {
-        Self { command, local, remote }
+        Self {
+            command,
+            local,
+            remote,
+        }
     }
 
     pub fn launch(&mut self) -> Result<()> {
@@ -47,13 +51,20 @@ impl<C: Cmd> Difftool<C> {
 impl Diff {
     pub fn new(program: impl AsRef<str>) -> Result<Self> {
         let temp_dir = Builder::new().prefix("gh-difftool").tempdir()?;
-        Ok(Self { program: program.as_ref().to_string(), temp_dir })
+        Ok(Self {
+            program: program.as_ref().to_string(),
+            temp_dir,
+        })
     }
 
     pub fn difftool(&self, change: &Change) -> Result<Difftool<Command>> {
         let new = self.new_file_contents(change)?;
         let original = self.create_temp_original(change, &new)?;
-        Ok(Difftool::new(Command::new(&self.program),original.into_os_string(), new.into_os_string()))
+        Ok(Difftool::new(
+            Command::new(&self.program),
+            original.into_os_string(),
+            new.into_os_string(),
+        ))
     }
 
     fn new_file_contents(&self, change: &Change) -> Result<PathBuf> {
@@ -214,8 +225,6 @@ mod tests {
         });
 
         let mut difftool = Difftool::new(mock, local, remote);
-        assert!(difftool
-            .launch()
-            .is_ok());
+        assert!(difftool.launch().is_ok());
     }
 }
