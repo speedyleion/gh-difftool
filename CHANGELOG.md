@@ -12,6 +12,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `--name-only` flag which will output the filenames of the changed files to
   stdout. This is similar to the `gh pr diff --name-only` command.
 
+### Changed
+
+- The diffing logic has been updated to run asynchronously. This allows for
+  fetching other changes in the background while the difftool is open and being
+  looked at. The changes are still presented to the user in the same order as
+  before.
+
 ## [0.1.4] - 2022-11-20
 
 ### Changed

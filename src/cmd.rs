@@ -34,6 +34,6 @@ impl Cmd for Command {
     }
     fn new_from_self(&self) -> Self {
         let program = self.get_program();
-        Command::new(program)
+        Self::new(program)
     }
 }

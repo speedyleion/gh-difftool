@@ -3,16 +3,16 @@
 //    (See accompanying file LICENSE or copy at
 //          https://www.boost.org/LICENSE_1_0.txt)
 
-//! Launches a difftool to
+//! Launches a difftool to compare changes
 
-use crate::cmd::Cmd;
 use crate::Change;
 use anyhow::Result;
 use std::ffi::OsString;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::process::Stdio;
 use tempfile::{Builder, TempDir};
+use tokio::process::Command;
 
 #[derive(Debug)]
 pub struct Diff {
@@ -21,27 +21,28 @@ pub struct Diff {
 }
 
 #[derive(Debug, Default)]
-pub struct Difftool<C> {
-    command: C,
+pub struct Difftool {
+    program: String,
     local: OsString,
     remote: OsString,
 }
 
-impl<C: Cmd> Difftool<C> {
-    fn new(command: C, local: OsString, remote: OsString) -> Self {
+impl Difftool {
+    fn new(program: impl AsRef<str>, local: OsString, remote: OsString) -> Self {
         Self {
-            command,
+            program: program.as_ref().to_string(),
             local,
             remote,
         }
     }
 
-    pub fn launch(&mut self) -> Result<()> {
-        self.command.arg(self.local.clone());
-        self.command.arg(self.remote.clone());
-        self.command.stdout(Stdio::piped());
-        self.command.stderr(Stdio::piped());
-        self.command.output()?;
+    pub async fn launch(&self) -> Result<()> {
+        let mut command = Command::new(&self.program);
+        command.arg(self.local.clone());
+        command.arg(self.remote.clone());
+        command.stdout(Stdio::piped());
+        command.stderr(Stdio::piped());
+        command.output().await?;
         // Some difftools, like bcompare, will return non zero status when there is a diff and 0
         // only when there are no changes.  This prevents us from trusting the status
         Ok(())
@@ -57,17 +58,17 @@ impl Diff {
         })
     }
 
-    pub fn difftool(&self, change: &Change) -> Result<Difftool<Command>> {
-        let new = self.new_file_contents(change)?;
-        let original = self.create_temp_original(change, &new)?;
+    pub async fn difftool(&self, change: Change) -> Result<Difftool> {
+        let new = self.new_file_contents(&change).await?;
+        let original = self.create_temp_original(&change, &new)?;
         Ok(Difftool::new(
-            Command::new(&self.program),
+            &self.program,
             original.into_os_string(),
             new.into_os_string(),
         ))
     }
 
-    fn new_file_contents(&self, change: &Change) -> Result<PathBuf> {
+    async fn new_file_contents(&self, change: &Change) -> Result<PathBuf> {
         let dir = self.temp_dir.as_ref();
         let file = dir.join(&change.filename);
         fs::create_dir_all(
@@ -75,7 +76,7 @@ impl Diff {
                 .expect("Should always have a parent temp path"),
         )?;
 
-        let contents = reqwest::blocking::get(&change.raw_url)?.text()?;
+        let contents = reqwest::get(&change.raw_url).await?.text().await?;
         fs::write(&file, contents)?;
         Ok(file)
     }
@@ -98,13 +99,7 @@ mod tests {
     use super::*;
     use httpmock::prelude::GET;
     use httpmock::MockServer;
-    use mockall::mock;
-    use mockall::predicate::eq;
     use std::fs;
-    use std::io;
-    use std::os::unix::prelude::ExitStatusExt;
-    use std::process::Stdio;
-    use std::process::{ExitStatus, Output};
     use temp_testdir::TempDir;
     use textwrap::dedent;
 
@@ -138,8 +133,8 @@ mod tests {
         assert_eq!(fs::read(&original).unwrap(), expected.into_bytes());
     }
 
-    #[test]
-    fn get_new_content() {
+    #[tokio::test]
+    async fn get_new_content() {
         let contents = "line one\nline two";
         let server = MockServer::start();
         let mock = server.mock(|when, then| {
@@ -154,7 +149,7 @@ mod tests {
             patch: "@@ -1,3 +1,3 @@\n doesn't matter".to_string(),
         };
         let diff = Diff::new("sure").unwrap();
-        let new_file = diff.new_file_contents(&change).unwrap();
+        let new_file = diff.new_file_contents(&change).await.unwrap();
 
         mock.assert();
         assert_eq!(
@@ -163,8 +158,8 @@ mod tests {
         );
     }
 
-    #[test]
-    fn getting_a_second_set_of_new_content() {
+    #[tokio::test]
+    async fn getting_a_second_set_of_new_content() {
         let contents = "something\nelse";
 
         let server = MockServer::start();
@@ -181,50 +176,12 @@ mod tests {
             patch: "@@ -1,3 +1,3 @@\n doesn't matter".to_string(),
         };
         let diff = Diff::new("stuff").unwrap();
-        let new_file = diff.new_file_contents(&change).unwrap();
+        let new_file = diff.new_file_contents(&change).await.unwrap();
 
         mock.assert();
         assert_eq!(
             fs::read(&new_file).unwrap(),
             contents.to_string().into_bytes()
         );
-    }
-
-    mock! {
-        C {}
-        impl Cmd for C {
-            fn arg(&mut self, arg: OsString) -> &mut Self;
-            fn stdout(&mut self, cfg: Stdio) -> &mut Self;
-            fn stderr(&mut self, cfg: Stdio) -> &mut Self;
-            fn output(&mut self) -> io::Result<Output>;
-            fn new_from_self(&self) -> Self;
-        }
-    }
-
-    #[test]
-    fn difftool_launches_ok() {
-        let local = OsString::from("foo/baz/bar");
-        let remote = OsString::from("some/other/file");
-        let mut mock = MockC::new();
-        mock.expect_arg()
-            .with(eq(local.clone()))
-            .times(1)
-            .returning(|_| MockC::new());
-        mock.expect_arg()
-            .with(eq(remote.clone()))
-            .times(1)
-            .returning(|_| MockC::new());
-        mock.expect_stdout().times(1).returning(|_| MockC::new());
-        mock.expect_stderr().times(1).returning(|_| MockC::new());
-        mock.expect_output().times(1).returning(|| {
-            Ok(Output {
-                status: ExitStatus::from_raw(0),
-                stdout: vec![],
-                stderr: b"an error message".to_vec(),
-            })
-        });
-
-        let mut difftool = Difftool::new(mock, local, remote);
-        assert!(difftool.launch().is_ok());
     }
 }
