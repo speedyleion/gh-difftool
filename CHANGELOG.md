@@ -16,7 +16,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - The diffing logic has been updated to run asynchronously. This allows for
   fetching other changes in the background while the difftool is open and being
-  looked at. The changes are still presented to the user in the same order as 
+  looked at. The changes are still presented to the user in the same order as
   before.
 
 ## [0.1.4] - 2022-11-20
