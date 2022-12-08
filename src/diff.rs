@@ -5,64 +5,52 @@
 
 //! Launches a difftool to compare changes
 
+use crate::git_config;
 use crate::Change;
 use anyhow::Result;
 use std::ffi::OsString;
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::Stdio;
 use tempfile::{Builder, TempDir};
-use tokio::process::Command;
 
 #[derive(Debug)]
 pub struct Diff {
-    program: String,
+    difftool: git_config::Difftool,
     temp_dir: TempDir,
 }
 
-#[derive(Debug, Default)]
-pub struct Difftool {
-    program: String,
+#[derive(Debug)]
+pub struct Difftool<'a> {
+    tool: &'a git_config::Difftool,
     local: OsString,
     remote: OsString,
 }
 
-impl Difftool {
-    fn new(program: impl AsRef<str>, local: OsString, remote: OsString) -> Self {
+impl<'a> Difftool<'a> {
+    fn new(tool: &'a git_config::Difftool, local: OsString, remote: OsString) -> Self {
         Self {
-            program: program.as_ref().to_string(),
+            tool,
             local,
             remote,
         }
     }
 
     pub async fn launch(&self) -> Result<()> {
-        let mut command = Command::new(&self.program);
-        command.arg(self.local.clone());
-        command.arg(self.remote.clone());
-        command.stdout(Stdio::piped());
-        command.stderr(Stdio::piped());
-        command.output().await?;
-        // Some difftools, like bcompare, will return non zero status when there is a diff and 0
-        // only when there are no changes.  This prevents us from trusting the status
-        Ok(())
+        self.tool.launch(&self.local, &self.remote).await
     }
 }
 
 impl Diff {
-    pub fn new(program: impl AsRef<str>) -> Result<Self> {
+    pub fn new(difftool: git_config::Difftool) -> Result<Self> {
         let temp_dir = Builder::new().prefix("gh-difftool").tempdir()?;
-        Ok(Self {
-            program: program.as_ref().to_string(),
-            temp_dir,
-        })
+        Ok(Self { difftool, temp_dir })
     }
 
     pub async fn difftool(&self, change: Change) -> Result<Difftool> {
         let new = self.new_file_contents(&change).await?;
         let original = self.create_temp_original(&change, &new)?;
         Ok(Difftool::new(
-            &self.program,
+            &self.difftool,
             original.into_os_string(),
             new.into_os_string(),
         ))
@@ -103,6 +91,15 @@ mod tests {
     use temp_testdir::TempDir;
     use textwrap::dedent;
 
+    fn difftool(dir: impl AsRef<Path>) -> git_config::Difftool {
+        let dir = dir.as_ref();
+        let git_dir = dir.join(".git");
+        let config = git_dir.join("config");
+        fs::create_dir_all(&git_dir).unwrap();
+        fs::write(&config, "[difftool.bc]\n    path = bcompare").unwrap();
+        git_config::Difftool::new(&dir, Some("bc")).unwrap()
+    }
+
     #[test]
     fn create_temp() {
         let temp = TempDir::default().permanent();
@@ -128,13 +125,14 @@ mod tests {
             raw_url: "sure".to_string(),
             patch: diff.to_string(),
         };
-        let diff = Diff::new("stuff").unwrap();
+        let diff = Diff::new(difftool(&temp)).unwrap();
         let original = diff.create_temp_original(&change, b).unwrap();
         assert_eq!(fs::read(&original).unwrap(), expected.into_bytes());
     }
 
     #[tokio::test]
     async fn get_new_content() {
+        let temp = TempDir::default();
         let contents = "line one\nline two";
         let server = MockServer::start();
         let mock = server.mock(|when, then| {
@@ -148,7 +146,7 @@ mod tests {
             raw_url: server.url("/one.c"),
             patch: "@@ -1,3 +1,3 @@\n doesn't matter".to_string(),
         };
-        let diff = Diff::new("sure").unwrap();
+        let diff = Diff::new(difftool(&temp)).unwrap();
         let new_file = diff.new_file_contents(&change).await.unwrap();
 
         mock.assert();
@@ -160,6 +158,7 @@ mod tests {
 
     #[tokio::test]
     async fn getting_a_second_set_of_new_content() {
+        let temp = TempDir::default();
         let contents = "something\nelse";
 
         let server = MockServer::start();
@@ -175,7 +174,7 @@ mod tests {
             raw_url: server.url("/some_raw_url/path"),
             patch: "@@ -1,3 +1,3 @@\n doesn't matter".to_string(),
         };
-        let diff = Diff::new("stuff").unwrap();
+        let diff = Diff::new(difftool(&temp)).unwrap();
         let new_file = diff.new_file_contents(&change).await.unwrap();
 
         mock.assert();
