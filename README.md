@@ -53,14 +53,14 @@ current git repository.
 
 `-t, --tool`: The tool to use for diffing the files. This name should match
 those used by git's difftool command or a custom one that the user has set
-the `git.diff.path` value for.
+the `difftool.<tool>.path` value for.
 
 ## Configuration
 
 By default, the tool to use will be derived from the current git configuration
 <https://git-scm.com/docs/git-difftool>. The `diff.tool` git configuration
-option will be used to determine the tool. Similar to git if `diff.tool` is
-not set then `merge.tool` will be used. Unlike git, if no tool is set
+option will be used to determine the tool. Similar to git, if `diff.tool` is
+not set then `merge.tool` will be used. Unlike git, if neither option is set
 `gh-difftool` will report an error.
 
 Alternatively one can specify a tool to use via the command line argument `-t,
