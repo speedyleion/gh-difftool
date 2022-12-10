@@ -21,8 +21,8 @@ use std::process::Command;
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
 struct Cli {
-    /// The difftool command to run
-    #[arg(short = 't', long = "tool", env = "DIFFTOOL")]
+    /// The tool to use for diffing
+    #[arg(short = 't', long = "tool", env = "GH_DIFFTOOL")]
     tool: Option<String>,
 
     /// The GitHub repo to diff, defaults to the GitHub remote of the current git repo
