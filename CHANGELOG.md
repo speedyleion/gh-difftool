@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- The default difftool will be looked up through the git config. The `diff.tool`
+  config option will be used to determine the default tool. The `-t, --tool`
+  flag and the `GH_DIFFTOOL` environment variable still override the default.
+
+### Changed
+
+- The environment variable for the tool has been renamed to `GH_DIFFTOOL`.
+  Previously it was `DIFFTOOL`. The new name allows for namespacing to avoid
+  possible collision.
+- The `-t, --tool` and environment variable now expect the git name of
+  the difftool program. Previously these values expected the path of the
+  difftool program to run. For example: `bc` is the git difftool name for the
+  [Beyond Compare](https://scootersoftware.com/) tool. `bc` is now the value
+  that should be passed to `-t, --tool`. The Beyond Compare executable is
+  named `bcompare`.
+
 ## [0.1.5] - 2022-12-02
 
 ### Added

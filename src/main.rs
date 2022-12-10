@@ -7,6 +7,7 @@ mod change_set;
 mod cmd;
 mod diff;
 mod gh_interface;
+mod git_config;
 
 use crate::change_set::{Change, ChangeSet};
 use crate::diff::{Diff, Difftool};
@@ -20,9 +21,9 @@ use std::process::Command;
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
 struct Cli {
-    /// The difftool command to run
-    #[arg(short = 't', long = "tool", env = "DIFFTOOL")]
-    difftool: Option<String>,
+    /// The tool to use for diffing
+    #[arg(short = 't', long = "tool", env = "GH_DIFFTOOL")]
+    tool: Option<String>,
 
     /// The GitHub repo to diff, defaults to the GitHub remote of the current git repo
     #[arg(long = "repo", requires = "pr", value_names = ["ORG/REPO_NAME"])]
@@ -40,7 +41,6 @@ struct Cli {
 #[tokio::main]
 async fn main() -> Result<()> {
     let cli = Cli::parse();
-    let difftool = cli.difftool.as_deref().unwrap_or("bcompare");
 
     let mut gh = gh_interface::GhCli::new(Command::new("gh"));
     let pr = match cli.pr {
@@ -63,13 +63,15 @@ async fn main() -> Result<()> {
         return Ok(());
     }
 
+    // Important, do this after the name only check as name only doesn't need a difftool
+    let difftool = git_config::Difftool::new(std::env::current_dir()?, cli.tool.as_deref())?;
     diff(difftool, change_set).await?;
     Ok(())
 }
 
 /// A thin wrapper around [Difftool::launch()]. It allows for a common future when there is nothing
 /// to diff
-async fn launch_difftool(difftool: Option<Difftool>) -> Result<()> {
+async fn launch_difftool(difftool: Option<Difftool<'_>>) -> Result<()> {
     if let Some(difftool) = difftool {
         difftool.launch().await
     } else {
@@ -95,7 +97,7 @@ async fn launch_difftool(difftool: Option<Difftool>) -> Result<()> {
 /// The reason for the 2 queues is to prevent launching multiple difftool instances. We only want
 /// one instance up at a time until the user dismisses it. While the difftool is up and has not
 /// been dismissed, the downloading and creation of temporary diff files will proceed.
-async fn diff(difftool: impl AsRef<str>, change_set: ChangeSet) -> Result<()> {
+async fn diff(difftool: git_config::Difftool, change_set: ChangeSet) -> Result<()> {
     let diff = Diff::new(difftool)?;
     {
         let mut stream = FuturesOrdered::new();

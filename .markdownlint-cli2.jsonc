@@ -3,6 +3,10 @@
     "no-duplicate-header": {
         // Allow multiple "Added" sections in the changelog
         "siblings_only": true
+    },
+    "line-length": {
+        // don't mess with code blocks
+        "code_blocks": false
     }
   },
 
