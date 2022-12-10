@@ -5,7 +5,7 @@
 
 case "$OSTYPE" in
   linux-gnu) os="linux" ;;
-  darwin) os="darwin" ;;
+  darwin*) os="darwin" ;;
   *) echo "Unsupported OS: $OSTYPE."; exit 1 ;;
 esac
 
