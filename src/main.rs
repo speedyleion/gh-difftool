@@ -41,7 +41,6 @@ struct Cli {
 #[tokio::main]
 async fn main() -> Result<()> {
     let cli = Cli::parse();
-    let difftool = git_config::Difftool::new(std::env::current_dir()?, cli.tool.as_deref())?;
 
     let mut gh = gh_interface::GhCli::new(Command::new("gh"));
     let pr = match cli.pr {
@@ -64,6 +63,8 @@ async fn main() -> Result<()> {
         return Ok(());
     }
 
+    // Important, do this after the name only check as name only doesn't need a difftool
+    let difftool = git_config::Difftool::new(std::env::current_dir()?, cli.tool.as_deref())?;
     diff(difftool, change_set).await?;
     Ok(())
 }
