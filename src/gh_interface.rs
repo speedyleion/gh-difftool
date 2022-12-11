@@ -118,7 +118,10 @@ mod tests {
     use mockall::predicate::eq;
     use std::ffi::OsString;
     use std::io;
+    #[cfg(unix)]
     use std::os::unix::prelude::ExitStatusExt;
+    #[cfg(windows)]
+    use std::os::windows::process::ExitStatusExt;
     use std::process::Stdio;
     use std::process::{ExitStatus, Output};
 
@@ -167,7 +170,7 @@ mod tests {
             let stderr = stderr.as_bytes().to_vec();
             mock.expect_output().times(1).returning(move || {
                 Ok(Output {
-                    status: ExitStatus::from_raw(status),
+                    status: ExitStatus::from_raw(status.try_into().unwrap()),
                     stdout: stdout.clone(),
                     stderr: stderr.clone(),
                 })
