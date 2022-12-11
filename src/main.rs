@@ -11,12 +11,15 @@ mod git_config;
 
 use crate::change_set::{Change, ChangeSet};
 use crate::diff::{Diff, Difftool};
+use crate::gh_interface::PullRequest;
 use anyhow::Result;
 use clap::Parser;
 use futures::stream::FuturesOrdered;
 use futures::StreamExt;
+use itertools::Itertools;
 use std::collections::VecDeque;
 use std::process::Command;
+use url::Url;
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -26,14 +29,19 @@ struct Cli {
     tool: Option<String>,
 
     /// The GitHub repo to diff, defaults to the GitHub remote of the current git repo
-    #[arg(long = "repo", requires = "pr", value_names = ["ORG/REPO_NAME"])]
+    #[arg(short = 'R', long = "repo", requires = "pr", value_names = ["OWNER/REPO"])]
     repo: Option<String>,
 
-    /// The PR to diff, defaults to the one associated with the current branch
-    #[arg(long = "pr")]
-    pr: Option<usize>,
+    /// The pull request to diff
+    ///
+    /// When omitted the pull request associated with the current branch will be used
+    /// A pull request can be supplied as argument in any of the following formats:
+    /// - by number, e.g. "123"
+    /// - by URL, e.g. "https://github.com/OWNER/REPO/pull/123"
+    #[arg(value_parser=parse_pr, verbatim_doc_comment)]
+    pr: Option<PullRequest>,
 
-    /// Show only the names of files that changed in a PR
+    /// Show only the names of files that changed in a pull request
     #[arg(long = "name-only")]
     name_only: bool,
 }
@@ -43,17 +51,16 @@ async fn main() -> Result<()> {
     let cli = Cli::parse();
 
     let mut gh = gh_interface::GhCli::new(Command::new("gh"));
-    let pr = match cli.pr {
-        None => gh.current_pr()?,
+    let mut pr = match cli.pr {
         Some(pr) => pr,
+        None => PullRequest::new_from_cwd()?,
     };
 
-    let repo = match cli.repo {
-        None => gh.current_repo()?,
-        Some(repo) => repo,
+    if let Some(repo) = cli.repo {
+        pr.repo = repo;
     };
 
-    let change_set = gh.change_set(repo, pr)?;
+    let change_set = gh.change_set(&pr)?;
 
     if cli.name_only {
         for change in change_set.changes {
@@ -133,4 +140,86 @@ async fn diff(difftool: git_config::Difftool, change_set: ChangeSet) -> Result<(
         }
     }
     Ok(())
+}
+
+#[derive(Debug, displaydoc::Display, Eq, PartialEq)]
+pub enum Error {
+    /// PR URL is not valid: {0}
+    PrUrl(String),
+}
+
+impl std::error::Error for Error {}
+
+/// Parse a PR from the command line
+///
+/// A pull request can be supplied as argument in any of the following formats:
+/// - by number, e.g. "123"
+/// - by URL, e.g. "https://github.com/OWNER/REPO/pull/123"
+fn parse_pr(pr: &str) -> Result<PullRequest> {
+    if let Ok(number) = pr.parse() {
+        let mut gh = gh_interface::GhCli::new(Command::new("gh"));
+        let repo = gh.current_repo()?;
+        return Ok(PullRequest { repo, number });
+    }
+    let url = Url::parse(pr)?;
+    let components = url
+        .path_segments()
+        .map(|c| c.collect::<Vec<_>>())
+        .expect("Should only fail for cannot-be-a-base urls");
+    let number = components
+        .get(3)
+        .ok_or_else(|| Error::PrUrl(pr.to_string()))?
+        .parse()?;
+
+    // Note since the "3" up above will error out, we know for sure we have 2 components
+    let repo = components.into_iter().take(2).join("/");
+    Ok(PullRequest { repo, number })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use yare::parameterized;
+
+    #[parameterized(
+    empty = {""},
+    not_a_url = {"nothing/to/it"},
+    domain_only = {"https://github.com"},
+    pr_location_is_not_a_number = {"https://github.com/repo/owner/pull/not_a_number"},
+    )]
+    fn pr_url_parsing_errors(bad_url: &str) {
+        assert!(parse_pr(bad_url).is_err())
+    }
+
+    #[parameterized(
+    ten = {"10", 10},
+    twelve = {"12", 12},
+    five = {"5", 5}
+    )]
+    fn parse_pr_from_a_number(number_str: &str, expected: usize) {
+        let result = parse_pr(number_str).unwrap();
+        assert_eq!(
+            result,
+            PullRequest {
+                repo: "speedyleion/gh-difftool".to_string(),
+                number: expected
+            }
+        );
+    }
+
+    #[parameterized(
+    gh_difftool = {"https://github.com/speedyleion/gh-difftool/pull/10", "speedyleion/gh-difftool", 10},
+    custom_1 = {"https://some_host.what/an-owner/a-repo-name/pull/3", "an-owner/a-repo-name", 3},
+    custom_2 = {"https://my_domain.com/the_best/bad_code/pull/21", "the_best/bad_code", 21},
+    )]
+    fn parse_pr_from_url(url: &str, expected_repo: &str, expected_number: usize) {
+        let result = parse_pr(url).unwrap();
+        assert_eq!(
+            result,
+            PullRequest {
+                repo: expected_repo.to_string(),
+                number: expected_number
+            }
+        );
+    }
 }
