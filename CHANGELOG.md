@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The default difftool will be looked up through the git config. The `diff.tool`
   config option will be used to determine the default tool. The `-t, --tool`
   flag and the `GH_DIFFTOOL` environment variable still override the default.
+- Ability to specify the pull request as a positional argument in one of the
+  following ways:
+  - by number, e.g. "123"
+  - by URL, e.g. "https://github.com/OWNER/REPO/pull/123"
 
 ### Changed
 
@@ -24,6 +28,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   [Beyond Compare](https://scootersoftware.com/) tool. `bc` is now the value
   that should be passed to `-t, --tool`. The Beyond Compare executable is
   named `bcompare`.
+- The `--pr` flag has been removed. Pull requests can now be specified via a
+  positional argument.
 
 ## [0.1.5] - 2022-12-02
 

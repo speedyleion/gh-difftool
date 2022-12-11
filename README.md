@@ -2,31 +2,51 @@
 
 A difftool extension to the GitHub CLI, [gh](https://cli.github.com/).
 
-Launches a difftool to show the differences of PRs. The files will be created
-in a temporary directory with the base branch version of the files prefixed
-with `base_`.
+Launches a difftool to show the differences of a pull request. The files
+will be created in a temporary directory with the base branch version of the
+files prefixed with `base_`.
 
 ```shell
-Usage: gh-difftool [OPTIONS]
+Usage: gh-difftool [OPTIONS] [PR]
+
+Arguments:
+  [PR]
+          The pull request to diff
+          
+          When omitted the pull request associated with the current branch will be used
+          A pull request can be supplied as argument in any of the following formats:
+          - by number, e.g. "123"
+          - by URL, e.g. "https://github.com/OWNER/REPO/pull/123"
 
 Options:
-  -t, --tool <TOOL>           The tool to use for diffing [env: GH_DIFFTOOL=]
-      --repo <ORG/REPO_NAME>  The GitHub repo to diff, defaults to the GitHub remote of the current git repo
-      --pr <PR>               The PR to diff, defaults to the one associated with the current branch
-      --name-only             Show only the names of files that changed in a PR
-  -h, --help                  Print help information
-  -V, --version               Print version information
+  -t, --tool <TOOL>
+          The tool to use for diffing
+          
+          [env: GH_DIFFTOOL=]
+
+  -R, --repo <OWNER/REPO>
+          The GitHub repo to diff, defaults to the GitHub remote of the current git repo
+
+      --name-only
+          Show only the names of files that changed in a pull request
+
+  -h, --help
+          Print help information (use `-h` for a summary)
+
+  -V, --version
+          Print version information
 ```
 
-With no args, the tool will try to diff the current branch's PR.
+With no args, the tool will try to diff the current branch's pull request.
 
-When provided a PR number will diff that PR. When provided a repo (requires a
-pr), will diff that repo's PR.
+When provided a pull request number or URL will diff that pull request. When
+provided a repo (requires a pull request number), will diff that repo's pull
+request.
 
-For instance one can do the following from anywhere and get a result.
+For instance one can do the following from any cloned GitHub repo
 
 ```shell
-gh difftool --repo speedyleion/gh-difftool --pr 10
+gh difftool --repo speedyleion/gh-difftool 10
 ```
 
 ## Installation
@@ -38,22 +58,7 @@ This can be installed like any other GitHub CLI extension,
 gh extension install speedyleion/gh-difftool
 ```
 
-> Note: Current installs only support 64bit Linux.
-
-## Options
-
-`--name-only`: Print only the names of files that changed in a PR, to stdout.
-
-`--pr`: The PR number to diff. When not specified the `gh` command line will be
-used to look up the current PR. An error will be output on stdout if this option
-is omitted and the current branch is not associated with a PR.
-
-`--repo`: The GitHub repository to diff, defaults to the GitHub remote of the
-current git repository.
-
-`-t, --tool`: The tool to use for diffing the files. This name should match
-those used by git's difftool command or a custom one that the user has set
-the `difftool.<tool>.path` value for.
+> Note: Current installs only support x86_64 Linux and Mac.
 
 ## Configuration
 

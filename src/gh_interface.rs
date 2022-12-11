@@ -14,8 +14,27 @@ use std::fmt::{Display, Formatter};
 use std::io::{Error, ErrorKind};
 use std::process::Stdio;
 
+#[derive(Clone, Default, PartialEq, Eq, Debug)]
+pub struct PullRequest {
+    /// A repo in the form of "OWNER/REPO".  The owner and repo from
+    /// "https://github.com/OWNER/REPO/pull/123"
+    pub repo: String,
+
+    /// The pull request number
+    pub number: usize,
+}
+
+impl PullRequest {
+    pub fn new_from_cwd() -> Result<Self> {
+        let mut gh = GhCli::new(std::process::Command::new("gh"));
+        let repo = gh.current_repo()?;
+        let number = gh.current_pr()?;
+        Ok(Self { repo, number })
+    }
+}
+
 #[derive(Default, PartialEq, Eq, Debug, Serialize, Deserialize)]
-struct Pr {
+struct PrNumber {
     number: usize,
 }
 
@@ -23,6 +42,7 @@ struct Pr {
 struct Owner {
     login: String,
 }
+
 #[derive(Default, PartialEq, Eq, Debug, Serialize, Deserialize)]
 struct Repo {
     name: String,
@@ -68,9 +88,10 @@ impl<C: Cmd> GhCli<C> {
         }
     }
 
-    pub fn change_set(&mut self, repo: impl AsRef<str>, pr_number: usize) -> Result<ChangeSet> {
-        let repo = repo.as_ref();
-        let pr_path = format!("/repos/{repo}/pulls/{pr_number}/files");
+    pub fn change_set(&mut self, pr: &PullRequest) -> Result<ChangeSet> {
+        let repo = &pr.repo;
+        let number = pr.number;
+        let pr_path = format!("/repos/{repo}/pulls/{number}/files");
         let output =
             self.run_command(["api", "-H", "Accept: application/vnd.github+json", &pr_path])?;
         ChangeSet::try_from(output.as_str())
@@ -78,7 +99,7 @@ impl<C: Cmd> GhCli<C> {
 
     pub fn current_pr(&mut self) -> Result<usize> {
         let output = self.run_command(["pr", "view", "--json", "number"])?;
-        let pr: Pr = serde_json::from_str(output.as_str())?;
+        let pr: PrNumber = serde_json::from_str(output.as_str())?;
         Ok(pr.number)
     }
 
@@ -231,7 +252,7 @@ mod tests {
     fn single_change_available() {
         let mock = change_set_mock(0, ONE_FILE, "");
         let mut gh = GhCli::new(mock);
-        assert_eq!(gh.change_set("speedyleion/gh-difftool", 10).unwrap(),
+        assert_eq!(gh.change_set(&PullRequest{ repo: "speedyleion/gh-difftool".to_string(), number: 10}).unwrap(),
             ChangeSet {
                 changes: vec![Change {
                     filename: String::from("Cargo.toml"),
@@ -246,7 +267,7 @@ mod tests {
     fn change_set_available() {
         let mock = change_set_mock(0, TWO_FILES, "");
         let mut gh = GhCli::new(mock);
-        assert_eq!(gh.change_set("speedyleion/gh-difftool", 10).unwrap(),
+        assert_eq!(gh.change_set(&PullRequest{ repo: "speedyleion/gh-difftool".to_string(), number: 10}).unwrap(),
             ChangeSet {
                 changes: vec![
                     Change {
@@ -274,7 +295,12 @@ mod tests {
         "#;
         let mock = change_set_mock(1, expected, "gh: Not Found (HTTP 404)");
         let mut gh = GhCli::new(mock);
-        let error = gh.change_set("speedyleion/gh-difftool", 10).unwrap_err();
+        let error = gh
+            .change_set(&PullRequest {
+                repo: "speedyleion/gh-difftool".to_string(),
+                number: 10,
+            })
+            .unwrap_err();
         let root_cause = error.root_cause();
         assert_eq!(format!("{}", root_cause), "gh: Not Found (HTTP 404)");
     }
@@ -286,7 +312,12 @@ mod tests {
         "#;
         let mock = change_set_mock(0, bad_json, "");
         let mut gh = GhCli::new(mock);
-        let error = gh.change_set("speedyleion/gh-difftool", 10).unwrap_err();
+        let error = gh
+            .change_set(&PullRequest {
+                repo: "speedyleion/gh-difftool".to_string(),
+                number: 10,
+            })
+            .unwrap_err();
         let root_cause = error.root_cause();
         assert_eq!(
             format!("{}", root_cause),

@@ -12,7 +12,6 @@ fn pr_10() {
     let mut cmd = Command::cargo_bin("gh-difftool").unwrap();
     let assert = cmd
         .arg("--name-only")
-        .arg("--pr")
         .arg("10")
         .arg("--repo")
         .arg("speedyleion/gh-difftool")
@@ -23,14 +22,15 @@ fn pr_10() {
 }
 
 #[test]
-fn pr_9() {
+fn pr_4535_from_clap() {
     let mut cmd = Command::cargo_bin("gh-difftool").unwrap();
     let assert = cmd
         .arg("--name-only")
-        .arg("--pr")
-        .arg("9")
+        .arg("4535")
         .arg("--repo")
-        .arg("speedyleion/gh-difftool")
+        .arg("clap-rs/clap")
         .assert();
-    assert.success().stdout("README.md\nsrc/main.rs\n");
+    assert
+        .success()
+        .stdout("Cargo.lock\nCargo.toml\nclap_complete/Cargo.toml\n");
 }
