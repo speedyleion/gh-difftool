@@ -15,14 +15,10 @@ case $(uname -m) in
   *) echo "Unsupported architecture $(uname -m)."; exit 1 ;;
 esac
 
-
+cargo build --release && mkdir dist && cp target/release/gh-difftool dist/gh-difftool_"$1"_"$os"-"$arch"
 if [ $os == "darwin" ];
 then
-  # Cross compile for m1, not sure supporting x86_64 is worth it
+  # Cross compile for m1
   rustup target add aarch64-apple-darwin
-  cargo build --target aarch64-apple-darwin --release && mkdir dist && find target -name gh-difftool
-  # cargo build --target aarch64-apple-darwin --release && mkdir dist && cp target/release/gh-difftool dist/gh-difftool_"$1"_"$os"-arm64
-else
-  cargo build --release && mkdir dist && cp target/release/gh-difftool dist/gh-difftool_"$1"_"$os"-"$arch"
+  cargo build --target aarch64-apple-darwin --release && cp target/aarch64-apple-darwin/release/gh-difftool dist/gh-difftool_"$1"_darwin-arm64
 fi
-
