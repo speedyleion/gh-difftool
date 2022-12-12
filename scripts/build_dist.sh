@@ -20,7 +20,8 @@ if [ $os == "darwin" ];
 then
   # Cross compile for m1, not sure supporting x86_64 is worth it
   rustup target add aarch64-apple-darwin
-  cargo build --target aarch64-apple-darwin --release && mkdir dist && cp target/release/gh-difftool dist/gh-difftool_"$1"_"$os"-arm64
+  cargo build --target aarch64-apple-darwin --release && mkdir dist && find target -name gh-difftool
+  # cargo build --target aarch64-apple-darwin --release && mkdir dist && cp target/release/gh-difftool dist/gh-difftool_"$1"_"$os"-arm64
 else
   cargo build --release && mkdir dist && cp target/release/gh-difftool dist/gh-difftool_"$1"_"$os"-"$arch"
 fi
