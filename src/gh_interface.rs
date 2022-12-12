@@ -121,7 +121,7 @@ mod tests {
     #[cfg(unix)]
     use std::os::unix::prelude::ExitStatusExt;
     #[cfg(windows)]
-    use std::os::windows::prelude::ExitStatusExt;
+    use std::os::windows::process::ExitStatusExt;
     use std::process::Stdio;
     use std::process::{ExitStatus, Output};
 
