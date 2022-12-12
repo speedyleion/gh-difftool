@@ -58,7 +58,7 @@ This can be installed like any other GitHub CLI extension,
 gh extension install speedyleion/gh-difftool
 ```
 
-> Note: Current installs only support x86_64 Linux and Mac.
+> Note: Current installs only support x86_64 Linux, arm64 Mac.
 
 ## Configuration
 
