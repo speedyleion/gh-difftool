@@ -16,4 +16,9 @@ case $(uname -m) in
 esac
 
 cargo build --release && mkdir dist && cp target/release/gh-difftool dist/gh-difftool_"$1"_"$os"-"$arch"
-
+if [ $os == "darwin" ];
+then
+  # Cross compile for m1
+  rustup target add aarch64-apple-darwin
+  cargo build --target aarch64-apple-darwin --release && cp target/aarch64-apple-darwin/release/gh-difftool dist/gh-difftool_"$1"_darwin-arm64
+fi
