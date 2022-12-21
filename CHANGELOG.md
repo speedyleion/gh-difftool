@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.7] - 2022-12-20
+
+### Fixed
+
+- Incorrect reuse of the future used for launching the difftool
+- Incorrect default of `bcompare` for beyond compare. `bcomp` is the command
+  line to be used with version control systems.
+
 ## [0.1.6] - 2022-12-11
 
 ### Added
@@ -79,7 +87,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Initial release
 
-[unreleased]: https://github.com/olivierlacan/keep-a-changelog/compare/v0.1.6...HEAD
+[unreleased]: https://github.com/olivierlacan/keep-a-changelog/compare/v0.1.7...HEAD
+[0.1.7]: https://github.com/speedyleion/gh-difftool/releases/tag/v0.1.7
 [0.1.6]: https://github.com/speedyleion/gh-difftool/releases/tag/v0.1.6
 [0.1.5]: https://github.com/speedyleion/gh-difftool/releases/tag/v0.1.5
 [0.1.4]: https://github.com/speedyleion/gh-difftool/releases/tag/v0.1.4
