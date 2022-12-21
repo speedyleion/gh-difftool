@@ -234,9 +234,9 @@ mod tests {
     }
 
     #[parameterized(
-    bc = { "bc", "bcompare" },
-    bc3 = { "bc", "bcompare" },
-    bc4 = { "bc", "bcompare" },
+    bc = { "bc", "bcomp" },
+    bc3 = { "bc", "bcomp" },
+    bc4 = { "bc", "bcomp" },
     meld = { "meld", "meld" },
     gvimdiff = { "gvimdiff", "gvimdiff" },
     )]
