@@ -132,6 +132,7 @@ async fn diff(difftool: git_config::Difftool, change_set: ChangeSet) -> Result<(
                     if let Some(diffthing) = diffs.pop_front() {
                         diff_future.set(launch_difftool(Some(diffthing)));
                     } else {
+                        diff_future.set(launch_difftool(None));
                         done = true;
                     }
                 },
