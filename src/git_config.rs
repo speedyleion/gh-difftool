@@ -25,9 +25,9 @@ use tokio::process::Command;
 
 static DIFFTOOLS: Lazy<HashMap<&str, &str>> = Lazy::new(|| {
     let mut m = HashMap::new();
-    m.insert("bc", "bcompare");
-    m.insert("bc3", "bcompare");
-    m.insert("bc4", "bcompare");
+    m.insert("bc", "bcomp");
+    m.insert("bc3", "bcomp");
+    m.insert("bc4", "bcomp");
     m.insert("meld", "meld");
     m.insert("gvimdiff", "gvimdiff");
     m
@@ -234,9 +234,9 @@ mod tests {
     }
 
     #[parameterized(
-    bc = { "bc", "bcompare" },
-    bc3 = { "bc", "bcompare" },
-    bc4 = { "bc", "bcompare" },
+    bc = { "bc", "bcomp" },
+    bc3 = { "bc", "bcomp" },
+    bc4 = { "bc", "bcomp" },
     meld = { "meld", "meld" },
     gvimdiff = { "gvimdiff", "gvimdiff" },
     )]

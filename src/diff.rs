@@ -96,7 +96,7 @@ mod tests {
         let git_dir = dir.join(".git");
         let config = git_dir.join("config");
         fs::create_dir_all(&git_dir).unwrap();
-        fs::write(&config, "[difftool.bc]\n    path = bcompare").unwrap();
+        fs::write(&config, "[difftool.bc]\n    path = bcomp").unwrap();
         git_config::Difftool::new(&dir, Some("bc")).unwrap()
     }
 
