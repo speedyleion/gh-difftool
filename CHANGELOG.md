@@ -10,10 +10,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - BeyondCompare command on linux. When the default changed to `bcomp` this
-  required a symlink to `bcompare`, or similar workaround, for linux. Now 
-  `bcomp` will be attempted and if it doesn't exist then `bcompare` will be 
+  required a symlink to `bcompare`, or similar workaround, for linux. Now
+  `bcomp` will be attempted and if it doesn't exist then `bcompare` will be
   used.
- 
+
 ## [0.1.7] - 2022-12-20
 
 ### Fixed

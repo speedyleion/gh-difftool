@@ -94,10 +94,7 @@ fn lookup_known_tool_program(tool: impl AsRef<str>) -> Result<String> {
 
 fn find_first_program(programs: &[&str]) -> Option<String> {
     programs.iter().fold(None, |found, current| {
-        found.or_else(|| {
-            which::which(current).map(|_| String::from(*current))
-                .ok()
-        })
+        found.or_else(|| which::which(current).map(|_| String::from(*current)).ok())
     })
 }
 
