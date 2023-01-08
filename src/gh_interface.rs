@@ -142,8 +142,8 @@ mod tests {
                 "/repos/speedyleion/gh-difftool/pulls/10/files",
             ],
             status,
-            stdout.as_ref(),
-            stderr.as_ref(),
+            stdout,
+            stderr,
         )
     }
 
@@ -151,10 +151,7 @@ mod tests {
         let mut mock = MockC::new();
         let stdout = stdout.to_string();
         let stderr = stderr.to_string();
-        let args = args
-            .into_iter()
-            .map(|s| String::from(*s))
-            .collect::<Vec<_>>();
+        let args = args.iter().map(|s| String::from(*s)).collect::<Vec<_>>();
         mock.expect_new_from_self().returning(move || {
             let mut mock = MockC::new();
             let args = args.clone();
