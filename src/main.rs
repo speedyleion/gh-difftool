@@ -128,7 +128,14 @@ async fn diff(difftool: git_config::Difftool, change_set: ChangeSet) -> Result<(
                     // if the `diffs` had happened to be empty last time through.
                     done = false;
                 },
-                _ = &mut diff_future, if !done => {
+                result = &mut diff_future, if !done => {
+                    //TODO need to make this error more useful. Getting errors
+                    // with no context isn't nice, but it's better than not
+                    // getting the errors.
+                    if let Err(error) = result {
+                        println!("{error:?}");
+                    }
+
                     if let Some(diffthing) = diffs.pop_front() {
                         diff_future.set(launch_difftool(Some(diffthing)));
                     } else {

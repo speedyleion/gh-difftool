@@ -19,17 +19,14 @@ use tokio::process::Command;
 // In order to support all of the options that git provides we're going to *start* with just a few
 // tool options
 //
-// Note: I haven't figured out how the config -> difftool maps to the `cmd` and `path` config
-// options.
-//
 
-static DIFFTOOLS: Lazy<HashMap<&str, &str>> = Lazy::new(|| {
+static DIFFTOOLS: Lazy<HashMap<&str, Vec<&str>>> = Lazy::new(|| {
     let mut m = HashMap::new();
-    m.insert("bc", "bcomp");
-    m.insert("bc3", "bcomp");
-    m.insert("bc4", "bcomp");
-    m.insert("meld", "meld");
-    m.insert("gvimdiff", "gvimdiff");
+    m.insert("bc", vec!["bcomp", "bcompare"]);
+    m.insert("bc3", vec!["bcomp", "bcompare"]);
+    m.insert("bc4", vec!["bcomp", "bcompare"]);
+    m.insert("meld", vec!["meld"]);
+    m.insert("gvimdiff", vec!["gvimdiff"]);
     m
 });
 
@@ -81,16 +78,27 @@ fn get_difftool_program(git_dir: impl AsRef<Path>, name: impl AsRef<str>) -> Res
     let config = git_config(git_dir)?;
     match config.string("difftool", Some(name.as_ref()), "path") {
         Some(path) => Ok(path.to_string()),
-        None => Ok(lookup_known_tool_programs(&name)?),
+        None => Ok(lookup_known_tool_program(&name)?),
     }
 }
 
-fn lookup_known_tool_programs(tool: impl AsRef<str>) -> Result<String> {
+fn lookup_known_tool_program(tool: impl AsRef<str>) -> Result<String> {
     let tool = tool.as_ref();
-    let program = DIFFTOOLS
+    let programs = DIFFTOOLS
         .get(tool)
         .ok_or_else(|| Error::UnknownDifftool(tool.to_string()))?;
-    Ok(program.to_string())
+
+    let program = find_first_program(programs).unwrap_or_else(|| String::from(programs[0]));
+    Ok(program)
+}
+
+fn find_first_program(programs: &[&str]) -> Option<String> {
+    programs.iter().fold(None, |found, current| {
+        found.or_else(|| {
+            which::which(current).map(|_| String::from(*current))
+                .ok()
+        })
+    })
 }
 
 fn get_config_difftool(dir: impl AsRef<Path>) -> Result<String> {
@@ -234,16 +242,28 @@ mod tests {
     }
 
     #[parameterized(
-    bc = { "bc", "bcomp" },
-    bc3 = { "bc", "bcomp" },
-    bc4 = { "bc", "bcomp" },
     meld = { "meld", "meld" },
     gvimdiff = { "gvimdiff", "gvimdiff" },
     )]
     fn lookup_known_tool(tool: &str, program: &str) {
         assert_eq!(
-            lookup_known_tool_programs(tool).unwrap(),
+            lookup_known_tool_program(tool).unwrap(),
             program.to_string()
+        );
+    }
+
+    // For these tests we use "cargo" as the program as that should be available to anyone running
+    // these tests
+    #[parameterized(
+    first_found = { &["cargo", "does-not-exist", "made-up-program-name"], Some("cargo") },
+    second_found = { &["does-not-exist", "cargo", "made-up-program-name"], Some("cargo") },
+    last_found = { &["does-not-exist", "made-up-program-name", "cargo"], Some("cargo") },
+    none_found_defaults_to_first = { &["does-not-exist", "made-up-program-name"], None },
+    )]
+    fn finding_program(programs: &[&str], expected_result: Option<&str>) {
+        assert_eq!(
+            find_first_program(programs),
+            expected_result.map(str::to_string)
         );
     }
 
