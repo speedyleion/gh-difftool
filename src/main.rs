@@ -13,7 +13,7 @@ use crate::change_set::{Change, ChangeSet};
 use crate::diff::{Diff, Difftool};
 use crate::gh_interface::PullRequest;
 use anyhow::Result;
-use clap::Parser;
+use clap::{ArgAction, Parser};
 use futures::stream::FuturesOrdered;
 use futures::StreamExt;
 use itertools::Itertools;
@@ -44,6 +44,13 @@ struct Cli {
     /// Show only the names of files that changed in a pull request
     #[arg(long = "name-only")]
     name_only: bool,
+
+    /// Specific files to diff.
+    ///
+    /// When not provided all of the files that changed in the pull request
+    /// will be diffed
+    #[arg(last=true, action=ArgAction::Append)]
+    files: Vec<String>,
 }
 
 #[tokio::main]
@@ -60,7 +67,7 @@ async fn main() -> Result<()> {
         pr.repo = repo;
     };
 
-    let change_set = gh.change_set(&pr)?;
+    let mut change_set = gh.change_set(&pr)?;
 
     if cli.name_only {
         for change in change_set.changes {
@@ -68,6 +75,11 @@ async fn main() -> Result<()> {
             println!("{filename}");
         }
         return Ok(());
+    }
+
+    let files = cli.files;
+    if !files.is_empty() {
+        change_set.filter_files(&files);
     }
 
     // Important, do this after the name only check as name only doesn't need a difftool
