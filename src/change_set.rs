@@ -76,6 +76,24 @@ pub struct ChangeSet {
     pub changes: Vec<Change>,
 }
 
+impl ChangeSet {
+    /// Will keep only changes related to `files`
+    ///
+    /// Any `files` which aren't in the current [`Changeset`] will be ignored.
+    ///
+    /// # Arguments
+    /// * `files` - The files to keep the changes for
+    pub fn filter_files<T: AsRef<str>>(&mut self, files: &[T]) -> &Self {
+        let files = files.iter().map(T::as_ref).collect::<Vec<_>>();
+        self.changes = self
+            .changes
+            .drain(..)
+            .filter(|c| files.contains(&c.filename.as_str()))
+            .collect::<Vec<Change>>();
+        self
+    }
+}
+
 impl TryFrom<&str> for ChangeSet {
     type Error = anyhow::Error;
 
@@ -196,6 +214,48 @@ mod tests {
         );
     }
 
+    #[test]
+    fn filter_files_from_changeset() {
+        let mut changeset = ChangeSet {
+            changes: vec![
+                Change {
+                    filename: String::from("Cargo.toml"),
+                    raw_url: String::from("stuff"),
+                    patch: String::from("more_stuff"),
+                },
+                Change {
+                    filename: String::from("yes/no/maybe.idk"),
+                    raw_url: String::from("sure"),
+                    patch: String::from("why not"),
+                },
+                Change {
+                    filename: String::from("what/when/where.stuff"),
+                    raw_url: String::from("idk"),
+                    patch: String::from("I guess"),
+                },
+            ],
+        };
+
+        changeset.filter_files(&["yes/no/maybe.idk", "fake/file", "Cargo.toml"]);
+
+        assert_eq!(
+            changeset,
+            ChangeSet {
+                changes: vec![
+                    Change {
+                        filename: String::from("Cargo.toml"),
+                        raw_url: String::from("stuff"),
+                        patch: String::from("more_stuff"),
+                    },
+                    Change {
+                        filename: String::from("yes/no/maybe.idk"),
+                        raw_url: String::from("sure"),
+                        patch: String::from("why not"),
+                    },
+                ]
+            }
+        );
+    }
     #[test]
     fn reverse_apply() {
         let temp = TempDir::default().permanent();

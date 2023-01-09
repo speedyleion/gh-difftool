@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Ability to specify `FILES` as the last positional argument. This limits
+  which files will be diffed to only those specified.
+
 ### Fixed
 
 - BeyondCompare command on linux. When the default changed to `bcomp` this
