@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.8] - 2023-01-08
+
 ### Added
 
 - Ability to specify `FILES` as the last positional argument. This limits
@@ -99,7 +101,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Initial release
 
-[unreleased]: https://github.com/olivierlacan/keep-a-changelog/compare/v0.1.7...HEAD
+[unreleased]: https://github.com/olivierlacan/keep-a-changelog/compare/v0.1.8...HEAD
+[0.1.8]: https://github.com/speedyleion/gh-difftool/releases/tag/v0.1.8
 [0.1.7]: https://github.com/speedyleion/gh-difftool/releases/tag/v0.1.7
 [0.1.6]: https://github.com/speedyleion/gh-difftool/releases/tag/v0.1.6
 [0.1.5]: https://github.com/speedyleion/gh-difftool/releases/tag/v0.1.5
