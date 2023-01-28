@@ -7,12 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.9] - 2023-01-28
+
 ### Added
 
 - The `--skip-to` option which allows for one to start the diff from the given
   file, skipping all files before the specified one.
 - The `--rotate-to` option which allows for one to start the diff from the given
   file, moving all files before the specified one to the end.
+- Windows pre-built binaries.
 
 ### Changed
 
@@ -113,7 +116,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Initial release
 
-[unreleased]: https://github.com/olivierlacan/keep-a-changelog/compare/v0.1.8...HEAD
+[unreleased]: https://github.com/olivierlacan/keep-a-changelog/compare/v0.1.9...HEAD
+[0.1.9]: https://github.com/speedyleion/gh-difftool/releases/tag/v0.1.9
 [0.1.8]: https://github.com/speedyleion/gh-difftool/releases/tag/v0.1.8
 [0.1.7]: https://github.com/speedyleion/gh-difftool/releases/tag/v0.1.7
 [0.1.6]: https://github.com/speedyleion/gh-difftool/releases/tag/v0.1.6
