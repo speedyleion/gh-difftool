@@ -84,7 +84,7 @@ impl ChangeSet {
     ///
     /// # Arguments
     /// * `files` - The files to keep the changes for
-    pub fn filter_files<T: AsRef<str>>(&mut self, files: &[T]) -> &Self {
+    pub fn filter_files<T: AsRef<str>>(&mut self, files: &[T]) -> &mut Self {
         let files = files.iter().map(T::as_ref).collect::<Vec<_>>();
         self.changes = self
             .changes
@@ -92,6 +92,22 @@ impl ChangeSet {
             .filter(|c| files.contains(&c.filename.as_str()))
             .collect::<Vec<Change>>();
         self
+    }
+
+    /// Rotate to `file` in the changeset.
+    ///
+    /// Will rotate the files in the [`Changeset`] so that `file` is first and all files before
+    /// `file` come at the end
+    ///
+    /// # Arguments
+    /// * `file` - The file to rotate to
+    ///
+    /// # Errors
+    /// When `file` does not exist in the [`Changeset`].
+    pub fn rotate_to<T: AsRef<str>>(&mut self, file: T) -> Result<&mut Self> {
+        let position = self.file_position(file)?;
+        self.changes.rotate_left(position);
+        Ok(self)
     }
 
     /// Skip to `file` in the changeset.
@@ -103,9 +119,22 @@ impl ChangeSet {
     ///
     /// # Errors
     /// When `file` does not exist in the [`Changeset`].
-    pub fn skip_to<T: AsRef<str>>(&mut self, file: T) -> Result<&Self> {
+    pub fn skip_to<T: AsRef<str>>(&mut self, file: T) -> Result<&mut Self> {
+        let position = self.file_position(file)?;
+        self.changes = self.changes.split_off(position);
+        Ok(self)
+    }
+
+    /// Position of `file` in the changeset.
+    ///
+    /// # Arguments
+    /// * `file` - The file to get the position for
+    ///
+    /// # Errors
+    /// When `file` does not exist in the [`Changeset`].
+    fn file_position(&self, file: impl AsRef<str>) -> Result<usize> {
         let file = file.as_ref();
-        let position = self
+        Ok(self
             .changes
             .iter()
             .position(|c| c.filename.as_str() == file)
@@ -114,9 +143,7 @@ impl ChangeSet {
                     ErrorKind::Other,
                     format!("No such path '{file}' in the diff."),
                 )
-            })?;
-        self.changes = self.changes.split_off(position);
-        Ok(self)
+            })?)
     }
 }
 
@@ -330,6 +357,40 @@ mod tests {
             .skip_to("foo")
             .expect_err("Should not find file in change");
         assert_eq!(error.to_string(), "No such path 'foo' in the diff.");
+    }
+
+    #[parameterized(
+    first = {"Cargo.toml", &["Cargo.toml", "yes/no/maybe.idk", "what/when/where.stuff"]},
+    middle = {"yes/no/maybe.idk", &["yes/no/maybe.idk", "what/when/where.stuff", "Cargo.toml"]},
+    last = {"what/when/where.stuff", &["what/when/where.stuff", "Cargo.toml", "yes/no/maybe.idk"]},
+    )]
+    fn rotate_to_files(file: &str, expected: &[&str]) {
+        let changes =
+            filenames_to_changes(&["Cargo.toml", "yes/no/maybe.idk", "what/when/where.stuff"]);
+        let mut changeset = ChangeSet { changes };
+
+        changeset
+            .rotate_to(file)
+            .expect("Should be able to rotate to");
+
+        assert_eq!(
+            changeset,
+            ChangeSet {
+                changes: filenames_to_changes(expected)
+            },
+        );
+    }
+
+    #[test]
+    fn rotate_to_non_existent_file_is_an_error() {
+        let changes =
+            filenames_to_changes(&["Cargo.toml", "yes/no/maybe.idk", "what/when/where.stuff"]);
+        let mut changeset = ChangeSet { changes };
+
+        let error = changeset
+            .rotate_to("baz")
+            .expect_err("Should not find file in change");
+        assert_eq!(error.to_string(), "No such path 'baz' in the diff.");
     }
 
     #[test]
