@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- The `--skip-to` option which allows for one to start the diff from the given
+  file, skipping all files before the specified one.
+
+### Changed
+
+- The `--name-only` flag now takes into account the specified
+  `FILES` and limits output to only those provided in `FILES` when present.
+
 ## [0.1.8] - 2023-01-08
 
 ### Added

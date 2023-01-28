@@ -45,6 +45,10 @@ struct Cli {
     #[arg(long = "name-only")]
     name_only: bool,
 
+    /// Start showing the diff for the given file, skipping all the files before it.
+    #[arg(long = "skip-to")]
+    skip_to: Option<String>,
+
     /// Specific files to diff.
     ///
     /// When not provided all of the files that changed in the pull request
@@ -69,17 +73,21 @@ async fn main() -> Result<()> {
 
     let mut change_set = gh.change_set(&pr)?;
 
+    let files = cli.files;
+    if !files.is_empty() {
+        change_set.filter_files(&files);
+    }
+
+    if let Some(filename) = cli.skip_to {
+        change_set.skip_to(filename)?;
+    }
+
     if cli.name_only {
         for change in change_set.changes {
             let filename = change.filename;
             println!("{filename}");
         }
         return Ok(());
-    }
-
-    let files = cli.files;
-    if !files.is_empty() {
-        change_set.filter_files(&files);
     }
 
     // Important, do this after the name only check as name only doesn't need a difftool
