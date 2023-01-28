@@ -45,6 +45,13 @@ struct Cli {
     #[arg(long = "name-only")]
     name_only: bool,
 
+    /// Start showing the diff for the given file, the files before it will move to end.
+    ///
+    /// Applied before `--skip-to`. This behavior deviates from `git-difftool` which
+    /// seems to ignore rotation when `--skip-to` is present.
+    #[arg(long = "rotate-to", verbatim_doc_comment)]
+    rotate_to: Option<String>,
+
     /// Start showing the diff for the given file, skipping all the files before it.
     #[arg(long = "skip-to")]
     skip_to: Option<String>,
@@ -78,6 +85,14 @@ async fn main() -> Result<()> {
         change_set.filter_files(&files);
     }
 
+    // Rotation is intentionally before skipping. This allows one to look at only ['2', '3'] from
+    // ['1', '2', '3', '4'], by rotating to '4' and skipping to '2'. If skip happened first then
+    // there wouldn't be a way to get rid of '4'.
+    // This deviates from `git-difftool` which seems to ignore `--rotate-to` when `--skip-to` is
+    // present.
+    if let Some(filename) = cli.rotate_to {
+        change_set.rotate_to(filename)?;
+    }
     if let Some(filename) = cli.skip_to {
         change_set.skip_to(filename)?;
     }

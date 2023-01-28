@@ -11,6 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - The `--skip-to` option which allows for one to start the diff from the given
   file, skipping all files before the specified one.
+- The `--rotate-to` option which allows for one to start the diff from the given
+  file, moving all files before the specified one to the end.
 
 ### Changed
 

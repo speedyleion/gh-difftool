@@ -35,6 +35,12 @@ Options:
       --name-only
           Show only the names of files that changed in a pull request
 
+      --rotate-to <ROTATE_TO>
+          Start showing the diff for the given file, the files before it will move to end.
+          
+          Applied before `--skip-to`. This behavior deviates from `git-difftool` which
+          seems to ignore rotation when `--skip-to` is present.
+
       --skip-to <SKIP_TO>
           Start showing the diff for the given file, skipping all the files before it
 
