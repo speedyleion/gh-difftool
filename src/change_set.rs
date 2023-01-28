@@ -86,11 +86,8 @@ impl ChangeSet {
     /// * `files` - The files to keep the changes for
     pub fn filter_files<T: AsRef<str>>(&mut self, files: &[T]) -> &mut Self {
         let files = files.iter().map(T::as_ref).collect::<Vec<_>>();
-        self.changes = self
-            .changes
-            .drain(..)
-            .filter(|c| files.contains(&c.filename.as_str()))
-            .collect::<Vec<Change>>();
+        self.changes
+            .retain(|c| files.contains(&c.filename.as_str()));
         self
     }
 
