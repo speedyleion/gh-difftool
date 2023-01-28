@@ -80,6 +80,7 @@ impl ChangeSet {
     /// Will keep only changes related to `files`
     ///
     /// Any `files` which aren't in the current [`Changeset`] will be ignored.
+    /// This ignoring of unmatched entries in `files` mimics the behavior of `git-difftool`.
     ///
     /// # Arguments
     /// * `files` - The files to keep the changes for
@@ -91,6 +92,31 @@ impl ChangeSet {
             .filter(|c| files.contains(&c.filename.as_str()))
             .collect::<Vec<Change>>();
         self
+    }
+
+    /// Skip to `file` in the changeset.
+    ///
+    /// Will remove any files prior to `file` in the [`Changeset`].
+    ///
+    /// # Arguments
+    /// * `file` - The file to skip to
+    ///
+    /// # Errors
+    /// When `file` does not exist in the [`Changeset`].
+    pub fn skip_to<T: AsRef<str>>(&mut self, file: T) -> Result<&Self> {
+        let file = file.as_ref();
+        let position = self
+            .changes
+            .iter()
+            .position(|c| c.filename.as_str() == file)
+            .ok_or_else(|| {
+                Error::new(
+                    ErrorKind::Other,
+                    format!("No such path '{file}' in the diff."),
+                )
+            })?;
+        self.changes = self.changes.split_off(position);
+        Ok(self)
     }
 }
 
@@ -109,6 +135,23 @@ mod tests {
     use std::fs;
     use temp_testdir::TempDir;
     use textwrap::dedent;
+    use yare::parameterized;
+
+    /// Convert `filenames` to a vector of ['Change']
+    ///
+    /// The `raw_url` and the `patch` in the resultant ['Change']es will all be the same.
+    fn filenames_to_changes(filenames: &[&str]) -> Vec<Change> {
+        let raw_url = String::from("raw_url");
+        let patch = String::from("patch");
+        filenames
+            .iter()
+            .map(|f| Change {
+                filename: (*f).to_owned(),
+                raw_url: raw_url.to_owned(),
+                patch: patch.to_owned(),
+            })
+            .collect::<Vec<_>>()
+    }
 
     #[test]
     fn empty_changeset_parses() {
@@ -256,6 +299,39 @@ mod tests {
             }
         );
     }
+
+    #[parameterized(
+    first = {"Cargo.toml", &["Cargo.toml", "yes/no/maybe.idk", "what/when/where.stuff"]},
+    middle = {"yes/no/maybe.idk", &["yes/no/maybe.idk", "what/when/where.stuff"]},
+    last = {"what/when/where.stuff", &["what/when/where.stuff"]},
+    )]
+    fn skip_to_files(file: &str, expected: &[&str]) {
+        let changes =
+            filenames_to_changes(&["Cargo.toml", "yes/no/maybe.idk", "what/when/where.stuff"]);
+        let mut changeset = ChangeSet { changes };
+
+        changeset.skip_to(file).expect("Should be able to skip to");
+
+        assert_eq!(
+            changeset,
+            ChangeSet {
+                changes: filenames_to_changes(expected)
+            },
+        );
+    }
+
+    #[test]
+    fn skip_to_non_existent_file_is_an_error() {
+        let changes =
+            filenames_to_changes(&["Cargo.toml", "yes/no/maybe.idk", "what/when/where.stuff"]);
+        let mut changeset = ChangeSet { changes };
+
+        let error = changeset
+            .skip_to("foo")
+            .expect_err("Should not find file in change");
+        assert_eq!(error.to_string(), "No such path 'foo' in the diff.");
+    }
+
     #[test]
     fn reverse_apply() {
         let temp = TempDir::default().permanent();

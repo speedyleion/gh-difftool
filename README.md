@@ -7,7 +7,7 @@ will be created in a temporary directory with the base branch version of the
 files prefixed with `base_`.
 
 ```shell
-Usage: gh-difftool [OPTIONS] [PR]
+Usage: gh-difftool [OPTIONS] [PR] [-- <FILES>...]
 
 Arguments:
   [PR]
@@ -17,6 +17,11 @@ Arguments:
           A pull request can be supplied as argument in any of the following formats:
           - by number, e.g. "123"
           - by URL, e.g. "https://github.com/OWNER/REPO/pull/123"
+
+  [FILES]...
+          Specific files to diff.
+          
+          When not provided all of the files that changed in the pull request will be diffed
 
 Options:
   -t, --tool <TOOL>
@@ -29,6 +34,9 @@ Options:
 
       --name-only
           Show only the names of files that changed in a pull request
+
+      --skip-to <SKIP_TO>
+          Start showing the diff for the given file, skipping all the files before it
 
   -h, --help
           Print help information (use `-h` for a summary)
