@@ -85,6 +85,12 @@ impl Diff {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(windows)]
+    const EOL: &'static str = "\r\n";
+    #[cfg(not(windows))]
+    const EOL: &'static str = "\n";
+
     use httpmock::prelude::GET;
     use httpmock::MockServer;
     use std::fs;
@@ -113,13 +119,7 @@ mod tests {
         );
         fs::write(&b, new).unwrap();
         let diff = "@@ -1,3 +1,3 @@\n line one\n-line two\n+line changed\n line three";
-        let expected = dedent(
-            "
-            line one
-            line two
-            line three
-            ",
-        );
+        let expected = format!("{EOL}line one{EOL}line two{EOL}line three{EOL}");
         let change = Change {
             filename: "ignore_me".to_string(),
             raw_url: "sure".to_string(),

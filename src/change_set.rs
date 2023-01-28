@@ -161,6 +161,11 @@ mod tests {
     use textwrap::dedent;
     use yare::parameterized;
 
+    #[cfg(windows)]
+    const EOL: &'static str = "\r\n";
+    #[cfg(not(windows))]
+    const EOL: &'static str = "\n";
+
     /// Convert `filenames` to a vector of ['Change']
     ///
     /// The `raw_url` and the `patch` in the resultant ['Change']es will all be the same.
@@ -409,13 +414,7 @@ mod tests {
             raw_url: "idk".to_string(),
             patch: diff.to_string(),
         };
-        let expected = dedent(
-            "
-            line one
-            line two
-            line three
-            ",
-        );
+        let expected = format!("{EOL}line one{EOL}line two{EOL}line three{EOL}");
         change.reverse_apply(&b, &a).unwrap();
         assert_eq!(fs::read(&a).unwrap(), expected.into_bytes());
     }
@@ -439,12 +438,7 @@ mod tests {
             raw_url: "idk".to_string(),
             patch: diff.to_string(),
         };
-        let expected = dedent(
-            "
-            line one
-            line three
-            ",
-        );
+        let expected = format!("{EOL}line one{EOL}line three{EOL}");
         change.reverse_apply(&b, &a).unwrap();
         assert_eq!(fs::read(&a).unwrap(), expected.into_bytes());
     }
