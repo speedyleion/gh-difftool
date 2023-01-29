@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.10] - 2023-01-28
+
+### Fixed
+
+- Windows binary builds published to release page
+
 ## [0.1.9] - 2023-01-28
 
 ### Added
@@ -116,7 +122,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Initial release
 
-[unreleased]: https://github.com/olivierlacan/keep-a-changelog/compare/v0.1.9...HEAD
+[unreleased]: https://github.com/olivierlacan/keep-a-changelog/compare/v0.1.10...HEAD
+[0.1.10]: https://github.com/speedyleion/gh-difftool/releases/tag/v0.1.10
 [0.1.9]: https://github.com/speedyleion/gh-difftool/releases/tag/v0.1.9
 [0.1.8]: https://github.com/speedyleion/gh-difftool/releases/tag/v0.1.8
 [0.1.7]: https://github.com/speedyleion/gh-difftool/releases/tag/v0.1.7
