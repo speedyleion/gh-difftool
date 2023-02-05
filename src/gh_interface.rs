@@ -7,6 +7,7 @@
 
 use crate::change_set::ChangeSet;
 use crate::cmd::Cmd;
+use crate::Change;
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::ffi::{OsStr, OsString};
@@ -92,9 +93,76 @@ impl<C: Cmd> GhCli<C> {
         let repo = &pr.repo;
         let number = pr.number;
         let pr_path = format!("/repos/{repo}/pulls/{number}/files");
-        let output =
-            self.run_command(["api", "-H", "Accept: application/vnd.github+json", &pr_path])?;
-        ChangeSet::try_from(output.as_str())
+
+        // The `gh` command line supports a `--paginate` flag which could potentially do this all
+        // for us. When using paginate `gh` increases the items per page to the max of 100.
+        // Unfortunately this results in the `patch` property being omitted on the last couple of
+        // entries. By doing it manually we keep the page size at 30 entries and are able to
+        // maintain the `patch` property on the files.
+        let (pages, mut changes) = self.changes_first_page(&pr_path)?;
+        for page in 2..=pages {
+            changes.extend(self.changes_subsequent_page(page, &pr_path)?);
+        }
+        Ok(ChangeSet { changes })
+    }
+
+    /// Get a page changes that is after the first page.
+    ///
+    /// Simplified logic that doesn't look at the link header
+    fn changes_subsequent_page(&mut self, page: usize, pr_path: &str) -> Result<Vec<Change>> {
+        let output = self.run_command([
+            "api",
+            "--method",
+            "GET",
+            "-F",
+            &format!("page={page}"),
+            pr_path,
+        ])?;
+        Ok(serde_json::from_str(output.as_str())?)
+    }
+
+    /// Get the first page of changes
+    ///
+    /// Will parse the link header, if present to provide the total number of pages available
+    /// When no link header is present then only one page worth of changes exists
+    fn changes_first_page(&mut self, pr_path: &str) -> Result<(usize, Vec<Change>)> {
+        let output = self.run_command([
+            "api",
+            "--method",
+            "GET",
+            "--include",
+            "-F",
+            "page=1",
+            pr_path,
+        ])?;
+        let pages = if let Some(link) = output.lines().find(|l| l.starts_with("Link:")) {
+            Self::changes_page_count(
+                link.strip_prefix("Link:")
+                    .expect("Prefix should have existed due to find call"),
+            )?
+        } else {
+            1
+        };
+        Ok((
+            pages,
+            serde_json::from_str(output.as_str().lines().last().ok_or_else(|| {
+                Error::new(
+                    ErrorKind::Other,
+                    format!("Should have had multiple lines in {output}"),
+                )
+            })?)?,
+        ))
+    }
+
+    /// Number of pages that make up all of the changes in a pr.
+    fn changes_page_count(link_header: &str) -> Result<usize> {
+        let header = parse_link_header::parse_with_rel(link_header)?;
+        if let Some(entry) = header.get("last") {
+            let page = entry.queries.get("page").expect("Malformed link header");
+            Ok(page.parse().expect("Page is not a valid integer"))
+        } else {
+            panic!("Expected a total page count in the link header")
+        }
     }
 
     pub fn current_pr(&mut self) -> Result<usize> {
@@ -140,8 +208,11 @@ mod tests {
         mocked_command(
             &[
                 "api",
-                "-H",
-                "Accept: application/vnd.github+json",
+                "--method",
+                "GET",
+                "--include",
+                "-F",
+                "page=1",
                 "/repos/speedyleion/gh-difftool/pulls/10/files",
             ],
             status,
@@ -250,7 +321,7 @@ mod tests {
 
     #[test]
     fn single_change_available() {
-        let mock = change_set_mock(0, ONE_FILE, "");
+        let mock = change_set_mock(0, &ONE_FILE.replace("\n", ""), "");
         let mut gh = GhCli::new(mock);
         assert_eq!(gh.change_set(&PullRequest{ repo: "speedyleion/gh-difftool".to_string(), number: 10}).unwrap(),
             ChangeSet {
@@ -265,7 +336,7 @@ mod tests {
 
     #[test]
     fn change_set_available() {
-        let mock = change_set_mock(0, TWO_FILES, "");
+        let mock = change_set_mock(0, &TWO_FILES.replace("\n", ""), "");
         let mut gh = GhCli::new(mock);
         assert_eq!(gh.change_set(&PullRequest{ repo: "speedyleion/gh-difftool".to_string(), number: 10}).unwrap(),
             ChangeSet {
@@ -293,7 +364,7 @@ mod tests {
               "documentation_url": "https://docs.github.com/rest/reference/pulls#list-pull-requests-files"
             }
         "#;
-        let mock = change_set_mock(1, expected, "gh: Not Found (HTTP 404)");
+        let mock = change_set_mock(1, &expected.replace("\n", ""), "gh: Not Found (HTTP 404)");
         let mut gh = GhCli::new(mock);
         let error = gh
             .change_set(&PullRequest {
@@ -310,7 +381,7 @@ mod tests {
         let bad_json = r#"
             [
         "#;
-        let mock = change_set_mock(0, bad_json, "");
+        let mock = change_set_mock(0, &bad_json.replace("\n", ""), "");
         let mut gh = GhCli::new(mock);
         let error = gh
             .change_set(&PullRequest {
@@ -321,7 +392,7 @@ mod tests {
         let root_cause = error.root_cause();
         assert_eq!(
             format!("{}", root_cause),
-            "EOF while parsing a list at line 3 column 8"
+            "EOF while parsing a list at line 1 column 21"
         );
     }
 
