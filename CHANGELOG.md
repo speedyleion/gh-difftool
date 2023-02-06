@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.11] - 2023-02-05
+
 ### Fixed
 
 - PRs with more than 30 files will now show all files in the difftool.
@@ -126,7 +128,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Initial release
 
-[unreleased]: https://github.com/olivierlacan/keep-a-changelog/compare/v0.1.10...HEAD
+[unreleased]: https://github.com/olivierlacan/keep-a-changelog/compare/v0.1.11...HEAD
+[0.1.11]: https://github.com/speedyleion/gh-difftool/releases/tag/v0.1.11
 [0.1.10]: https://github.com/speedyleion/gh-difftool/releases/tag/v0.1.10
 [0.1.9]: https://github.com/speedyleion/gh-difftool/releases/tag/v0.1.9
 [0.1.8]: https://github.com/speedyleion/gh-difftool/releases/tag/v0.1.8
