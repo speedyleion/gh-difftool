@@ -7,6 +7,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+
+- PRs with more than 30 files will now show all files in the difftool.
+
 ## [0.1.10] - 2023-01-28
 
 ### Fixed
