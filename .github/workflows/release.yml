@@ -16,6 +16,6 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
-      - uses: speedyleion/gh-extension-precompile@windows-runs
+      - uses: cli/gh-extension-precompile@v1
         with: 
           build_script_override: "scripts/build_dist.sh"
