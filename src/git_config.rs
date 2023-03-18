@@ -4,7 +4,7 @@
 //          https://www.boost.org/LICENSE_1_0.txt)
 
 use anyhow::Result;
-use git_config::File;
+use gix_config::File;
 use once_cell::sync::Lazy;
 use std::collections::HashMap;
 use std::ffi::OsStr;
@@ -76,7 +76,7 @@ impl Difftool {
 
 fn get_difftool_program(git_dir: impl AsRef<Path>, name: impl AsRef<str>) -> Result<String> {
     let config = git_config(git_dir)?;
-    match config.string("difftool", Some(name.as_ref()), "path") {
+    match config.string("difftool", Some(name.as_ref().into()), "path") {
         Some(path) => Ok(path.to_string()),
         None => Ok(lookup_known_tool_program(&name)?),
     }
