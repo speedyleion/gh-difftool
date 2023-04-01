@@ -27,12 +27,12 @@ impl Change {
         P2: AsRef<Path>,
     {
         // This is not an ideal implementation, but it works for now.
-        // When the file is removed (deleted) the Github API results in a `raw_url` which points to
-        // the old version of the file, not an empty version. This kind of makes sense as an empty
-        // file doesn't exist, the file itself doesn't exit. The problem comes in that the consumers
-        // of Change happen to create the original and new files instead of letting change do it.
-        // Because of this lack of encapsulation, change will swap out the new version for the old
-        // version and write an empty new version
+        // When the file is removed (deleted) the Github API provides a `raw_url` which points to
+        // the old version of the file, not an empty version. This makes sense as an empty file is
+        // different than a file that doesn't exist. The problem comes in that the consumers of
+        // [`Change`] happen to create the original and new files instead of letting [`Change`] do
+        // it. Because of this lack of encapsulation, [`Change`] will swap out the new version for
+        // the old version and write an empty new version
         if self.status == "removed" {
             fs::copy(&src, &dest)?;
             fs::write(src, "")?;
