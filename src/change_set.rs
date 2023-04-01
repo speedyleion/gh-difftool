@@ -5,9 +5,9 @@
 
 //! Set of changes that goes from one version of files to another
 
-use std::fs;
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
+use std::fs;
 use std::io::{Error, ErrorKind, Write};
 use std::path::Path;
 use std::process::{Command, Stdio};
@@ -36,7 +36,7 @@ impl Change {
         if self.status == "removed" {
             fs::copy(&src, &dest)?;
             fs::write(src, "")?;
-            return Ok(())
+            return Ok(());
         }
         let mut cmd = Command::new("patch");
         cmd.args([

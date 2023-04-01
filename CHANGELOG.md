@@ -7,12 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [0.1.11] - 2023-02-05
-
 ### Fixed
 
 - Diffing of deleted files. Deleted files now result in a comparison of the old
   file against an empty file.
+
+## [0.1.11] - 2023-02-05
 
 ### Fixed
 
