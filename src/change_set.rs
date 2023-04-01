@@ -515,7 +515,7 @@ mod tests {
             patch: diff.to_string(),
             status: String::from("removed"),
         };
-        let expected = format!("{EOL}line one{EOL}line two{EOL}line three{EOL}");
+        let expected = format!("\nline one\nline two\nline three\n");
         change.reverse_apply(&b, &a).unwrap();
         assert_eq!(fs::read(&a).unwrap(), expected.into_bytes());
     }
