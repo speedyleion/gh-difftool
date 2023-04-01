@@ -7,6 +7,7 @@
 
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
+use std::fs;
 use std::io::{Error, ErrorKind, Write};
 use std::path::Path;
 use std::process::{Command, Stdio};
@@ -16,6 +17,7 @@ pub struct Change {
     pub filename: String,
     pub raw_url: String,
     pub patch: String,
+    pub status: String,
 }
 
 impl Change {
@@ -24,6 +26,18 @@ impl Change {
         P1: AsRef<Path>,
         P2: AsRef<Path>,
     {
+        // This is not an ideal implementation, but it works for now.
+        // When the file is removed (deleted) the Github API provides a `raw_url` which points to
+        // the old version of the file, not an empty version. This makes sense as an empty file is
+        // different than a file that doesn't exist. The problem comes in that the consumers of
+        // [`Change`] happen to create the original and new files instead of letting [`Change`] do
+        // it. Because of this lack of encapsulation, [`Change`] will swap out the new version for
+        // the old version and write an empty new version
+        if self.status == "removed" {
+            fs::copy(&src, &dest)?;
+            fs::write(src, "")?;
+            return Ok(());
+        }
         let mut cmd = Command::new("patch");
         cmd.args([
             "-R",
@@ -178,6 +192,7 @@ mod tests {
                 filename: (*f).to_owned(),
                 raw_url: raw_url.to_owned(),
                 patch: patch.to_owned(),
+                status: String::from("modified"),
             })
             .collect::<Vec<_>>()
     }
@@ -221,6 +236,7 @@ mod tests {
                     filename: String::from("Cargo.toml"),
                     raw_url: String::from("https://github.com/speedyleion/gh-difftool/raw/befb7bf69c3c8ba97c714d57c8dadd9621021c84/Cargo.toml"),
                     patch: String::from("@@ -6,3 +6,7 @@ edition = \"2021\"\n [dev-dependencies]\n assert_cmd = \"2.0.4\"\n mockall = \"0.11.2\"\n+textwrap = \"0.15.1\"\n+\n+[dependencies]\n+patch = \"0.6.0\""),
+                    status: String::from("modified"),
                 }]
             }
         );
@@ -247,17 +263,20 @@ mod tests {
               {
                 "filename": "Cargo.toml",
                 "raw_url": "stuff",
-                "patch": "more_stuff"
+                "patch": "more_stuff",
+                "status": "modified"
               },
               {
                 "filename": "yes/no/maybe.idk",
                 "raw_url": "sure",
-                "patch": "why not"
+                "patch": "why not",
+                "status": "modified"
               },
               {
                 "filename": "what/when/where.stuff",
                 "raw_url": "idk",
-                "patch": "I guess"
+                "patch": "I guess",
+                "status": "modified"
               }
             ]
         "#;
@@ -270,16 +289,19 @@ mod tests {
                         filename: String::from("Cargo.toml"),
                         raw_url: String::from("stuff"),
                         patch: String::from("more_stuff"),
+                        status: String::from("modified"),
                     },
                     Change {
                         filename: String::from("yes/no/maybe.idk"),
                         raw_url: String::from("sure"),
                         patch: String::from("why not"),
+                        status: String::from("modified"),
                     },
                     Change {
                         filename: String::from("what/when/where.stuff"),
                         raw_url: String::from("idk"),
                         patch: String::from("I guess"),
+                        status: String::from("modified"),
                     }
                 ]
             }
@@ -294,16 +316,19 @@ mod tests {
                     filename: String::from("Cargo.toml"),
                     raw_url: String::from("stuff"),
                     patch: String::from("more_stuff"),
+                    status: String::from("modified"),
                 },
                 Change {
                     filename: String::from("yes/no/maybe.idk"),
                     raw_url: String::from("sure"),
                     patch: String::from("why not"),
+                    status: String::from("modified"),
                 },
                 Change {
                     filename: String::from("what/when/where.stuff"),
                     raw_url: String::from("idk"),
                     patch: String::from("I guess"),
+                    status: String::from("modified"),
                 },
             ],
         };
@@ -318,11 +343,13 @@ mod tests {
                         filename: String::from("Cargo.toml"),
                         raw_url: String::from("stuff"),
                         patch: String::from("more_stuff"),
+                        status: String::from("modified"),
                     },
                     Change {
                         filename: String::from("yes/no/maybe.idk"),
                         raw_url: String::from("sure"),
                         patch: String::from("why not"),
+                        status: String::from("modified"),
                     },
                 ]
             }
@@ -413,6 +440,7 @@ mod tests {
             filename: "what/when/where.stuff".to_string(),
             raw_url: "idk".to_string(),
             patch: diff.to_string(),
+            status: String::from("modified"),
         };
         let expected = format!("{EOL}line one{EOL}line two{EOL}line three{EOL}");
         change.reverse_apply(&b, &a).unwrap();
@@ -437,6 +465,7 @@ mod tests {
             filename: "what/when/where.stuff".to_string(),
             raw_url: "idk".to_string(),
             patch: diff.to_string(),
+            status: String::from("modified"),
         };
         let expected = format!("{EOL}line one{EOL}line three{EOL}");
         change.reverse_apply(&b, &a).unwrap();
@@ -456,11 +485,38 @@ mod tests {
             filename: "what/when/where.stuff".to_string(),
             raw_url: "idk".to_string(),
             patch: diff.to_string(),
+            status: String::from("modified"),
         };
 
         let error = change.reverse_apply(&b, &a).unwrap_err();
         let root_cause = error.root_cause();
         let message = format!("{}", root_cause);
         assert!(message.starts_with(&message_start));
+    }
+
+    #[test]
+    fn file_removed() {
+        let temp = TempDir::default().permanent();
+        let a = temp.join("a");
+        let b = temp.join("b");
+        let raw_url_contents = dedent(
+            "
+            line one
+            line two
+            line three
+            ",
+        );
+        fs::write(&b, raw_url_contents).unwrap();
+
+        let diff = "@@ -1,3 +0,0 @@\n-line one\n-line two\n-line three";
+        let change = Change {
+            filename: "what/when/where.stuff".to_string(),
+            raw_url: "idk".to_string(),
+            patch: diff.to_string(),
+            status: String::from("removed"),
+        };
+        let expected = format!("\nline one\nline two\nline three\n");
+        change.reverse_apply(&b, &a).unwrap();
+        assert_eq!(fs::read(&a).unwrap(), expected.into_bytes());
     }
 }
