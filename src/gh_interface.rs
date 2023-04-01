@@ -329,6 +329,7 @@ mod tests {
                     filename: String::from("Cargo.toml"),
                     raw_url: String::from("https://github.com/speedyleion/gh-difftool/raw/befb7bf69c3c8ba97c714d57c8dadd9621021c84/Cargo.toml"),
                     patch: String::from("@@ -6,3 +6,7 @@ edition = \"2021\"\n [dev-dependencies]\n assert_cmd = \"2.0.4\"\n mockall = \"0.11.2\"\n+textwrap = \"0.15.1\"\n+\n+[dependencies]\n+patch = \"0.6.0\""),
+                    status: String::from("modified"),
                 }]
             }
         );
@@ -345,11 +346,13 @@ mod tests {
                         filename: String::from("Cargo.toml"),
                         raw_url: String::from("https://github.com/speedyleion/gh-difftool/raw/befb7bf69c3c8ba97c714d57c8dadd9621021c84/Cargo.toml"),
                         patch: String::from("@@ -6,3 +6,7 @@ edition = \"2021\"\n [dev-dependencies]\n assert_cmd = \"2.0.4\"\n mockall = \"0.11.2\"\n+textwrap = \"0.15.1\"\n+\n+[dependencies]\n+patch = \"0.6.0\""),
+                        status: String::from("modified"),
                     },
                     Change {
                         filename: String::from("src/main.rs"),
                         raw_url: String::from("https://github.com/speedyleion/gh-difftool/raw/befb7bf69c3c8ba97c714d57c8dadd9621021c84/src%2Fmain.rs"),
                         patch: String::from("@@ -1,4 +1,5 @@\n mod gh_interface;\n+mod patch;\n \n fn main() {\n     println!(\"Hello, world!\");"),
+                        status: String::from("modified"),
                     },
                 ]
             }

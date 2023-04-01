@@ -124,6 +124,7 @@ mod tests {
             filename: "ignore_me".to_string(),
             raw_url: "sure".to_string(),
             patch: diff.to_string(),
+            status: "modified".to_string(),
         };
         let diff = Diff::new(difftool(&temp)).unwrap();
         let original = diff.create_temp_original(&change, b).unwrap();
@@ -145,6 +146,7 @@ mod tests {
             filename: "foo/bar/fish.ext".to_string(),
             raw_url: server.url("/one.c"),
             patch: "@@ -1,3 +1,3 @@\n doesn't matter".to_string(),
+            status: "modified".to_string(),
         };
         let diff = Diff::new(difftool(&temp)).unwrap();
         let new_file = diff.new_file_contents(&change).await.unwrap();
@@ -173,6 +175,7 @@ mod tests {
             filename: "foo/bar/fish.ext".to_string(),
             raw_url: server.url("/some_raw_url/path"),
             patch: "@@ -1,3 +1,3 @@\n doesn't matter".to_string(),
+            status: "modified".to_string(),
         };
         let diff = Diff::new(difftool(&temp)).unwrap();
         let new_file = diff.new_file_contents(&change).await.unwrap();

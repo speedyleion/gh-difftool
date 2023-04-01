@@ -11,6 +11,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Fixed
 
+- Diffing of deleted files. Deleted files now result in a comparison of the old
+  file against an empty file.
+
+### Fixed
+
 - PRs with more than 30 files will now show all files in the difftool.
 
 ## [0.1.10] - 2023-01-28
