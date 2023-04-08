@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.12] - 2023-04-07
+
 ### Fixed
 
 - Diffing of deleted files. Deleted files now result in a comparison of the old
@@ -133,7 +135,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Initial release
 
-[unreleased]: https://github.com/olivierlacan/keep-a-changelog/compare/v0.1.11...HEAD
+[unreleased]: https://github.com/olivierlacan/keep-a-changelog/compare/v0.1.12...HEAD
+[0.1.12]: https://github.com/speedyleion/gh-difftool/releases/tag/v0.1.12
 [0.1.11]: https://github.com/speedyleion/gh-difftool/releases/tag/v0.1.11
 [0.1.10]: https://github.com/speedyleion/gh-difftool/releases/tag/v0.1.10
 [0.1.9]: https://github.com/speedyleion/gh-difftool/releases/tag/v0.1.9
