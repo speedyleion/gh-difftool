@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.13] - 2023-08-28
+
+### Added
+
+- Android pre-built binary.
+
 ## [0.1.12] - 2023-04-07
 
 ### Fixed
@@ -135,7 +141,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Initial release
 
-[unreleased]: https://github.com/olivierlacan/keep-a-changelog/compare/v0.1.12...HEAD
+[unreleased]: https://github.com/olivierlacan/keep-a-changelog/compare/v0.1.13...HEAD
+[0.1.13]: https://github.com/speedyleion/gh-difftool/releases/tag/v0.1.13
 [0.1.12]: https://github.com/speedyleion/gh-difftool/releases/tag/v0.1.12
 [0.1.11]: https://github.com/speedyleion/gh-difftool/releases/tag/v0.1.11
 [0.1.10]: https://github.com/speedyleion/gh-difftool/releases/tag/v0.1.10
