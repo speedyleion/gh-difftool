@@ -75,6 +75,7 @@ gh extension install speedyleion/gh-difftool
 Current installs support:
 
 - x86_64 Linux
+- arm64 Android
 - x86_64 Mac
 - arm64 Mac
 - x86_64 Windows
