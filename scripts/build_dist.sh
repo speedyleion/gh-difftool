@@ -18,9 +18,17 @@ case $(uname -m) in
 esac
 
 cargo build --release && mkdir dist && cp target/release/gh-difftool"$ext" dist/gh-difftool_"$1"_"$os"-"$arch""$ext"
+
+# Cross compile for m1
 if [ $os == "darwin" ];
 then
-  # Cross compile for m1
   rustup target add aarch64-apple-darwin
   cargo build --target aarch64-apple-darwin --release && cp target/aarch64-apple-darwin/release/gh-difftool dist/gh-difftool_"$1"_darwin-arm64
+fi
+
+# Cross compile for android
+if [ $os == "linux" ];
+then
+  rustup target add aarch64-linux-android
+  cargo build --target aarch64-linux-android --release && cp target/aarch64-linux-android/release/gh-difftool dist/gh-difftool_"$1"_android-arm64
 fi
