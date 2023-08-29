@@ -30,5 +30,10 @@ fi
 if [ $os == "linux" ];
 then
   rustup target add aarch64-linux-android
+
+  CC_aarch64_linux_android=/usr/local/lib/android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android21-clang \
+  AR=/usr/local/lib/android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ar \
+  RANLIB=/usr/local/lib/android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ranlib \
+  CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER=/usr/local/lib/android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android21-clang \
   cargo build --target aarch64-linux-android --release && cp target/aarch64-linux-android/release/gh-difftool dist/gh-difftool_"$1"_android-arm64
 fi
