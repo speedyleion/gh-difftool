@@ -27,3 +27,14 @@ mockall = "0.11.2"
 temp_testdir = "0.2.3"
 textwrap = "0.16.0"
 yare = "1.0.2"
+
+
+# Need to give credit to https://github.com/johnthagen/min-sized-rust for these
+# options to help reduce the binary size. Knocked off about 66% of the size with
+# these options
+[profile.release]
+opt-level = 'z'     
+lto = true          
+codegen-units = 1   
+panic = 'abort'     
+strip = true        
