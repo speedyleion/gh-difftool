@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.15] - 2023-10-07
+
+### Changed
+
+- Reduced the default release binary sizes
+
 ## [0.1.14] - 2023-09-01
 
 ### Fixed
