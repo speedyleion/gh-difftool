@@ -16,7 +16,6 @@ use anyhow::Result;
 use clap::{ArgAction, Parser};
 use futures::stream::FuturesOrdered;
 use futures::StreamExt;
-use itertools::Itertools;
 use std::collections::VecDeque;
 use std::process::Command;
 use url::Url;
@@ -215,7 +214,7 @@ fn parse_pr(pr: &str) -> Result<PullRequest> {
         .parse()?;
 
     // Note since the "3" up above will error out, we know for sure we have 2 components
-    let repo = components.into_iter().take(2).join("/");
+    let repo = components.into_iter().take(2).collect::<Vec<_>>().join("/");
     Ok(PullRequest { repo, number })
 }
 
