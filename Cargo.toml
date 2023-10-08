@@ -6,7 +6,7 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0.66"
 clap = { version = "4.0.18", features = ["derive", "env"] }
-displaydoc = "0.2.3"
+displaydoc = "0.2.4"
 futures = { version = "0.3.25", default_features = false }
 gix-config = "0.19.0"
 itertools = "0.10.5"
