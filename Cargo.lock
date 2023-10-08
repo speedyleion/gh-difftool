@@ -788,7 +788,7 @@ dependencies = [
  "futures",
  "gix-config",
  "httpmock",
- "itertools",
+ "itertools 0.11.0",
  "mockall",
  "once_cell",
  "parse_link_header",
@@ -1266,6 +1266,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "itertools"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "b1c173a5686ce8bfa551b3563d0c2170bf24ca44da99c7ca4bfdab5418c3fe57"
+dependencies = [
+ "either",
+]
+
+[[package]]
 name = "itoa"
 version = "1.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1300,7 +1309,7 @@ dependencies = [
  "bit-set",
  "diff",
  "ena",
- "itertools",
+ "itertools 0.10.5",
  "lalrpop-util",
  "petgraph",
  "pico-args",
@@ -1745,7 +1754,7 @@ checksum = "59230a63c37f3e18569bdb90e4a89cbf5bf8b06fea0b84e65ea10cc4df47addd"
 dependencies = [
  "difflib",
  "float-cmp",
- "itertools",
+ "itertools 0.10.5",
  "normalize-line-endings",
  "predicates-core",
  "regex",
@@ -1759,7 +1768,7 @@ checksum = "1ba7d6ead3e3966038f68caa9fc1f860185d95a793180bbcfe0d0da47b3961ed"
 dependencies = [
  "anstyle 0.3.5",
  "difflib",
- "itertools",
+ "itertools 0.10.5",
  "predicates-core",
 ]
 
@@ -2337,7 +2346,7 @@ checksum = "630bdcf245f78637c13ec01ffae6187cca34625e8c63150d424b59e55af2675e"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.0",
+ "syn 2.0.12",
 ]
 
 [[package]]
