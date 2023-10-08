@@ -788,7 +788,6 @@ dependencies = [
  "futures",
  "gix-config",
  "httpmock",
- "itertools",
  "mockall",
  "once_cell",
  "parse_link_header",
