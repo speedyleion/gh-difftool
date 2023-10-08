@@ -91,7 +91,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Ability to specify the pull request as a positional argument in one of the
   following ways:
   - by number, e.g. "123"
-  - by URL, e.g. "https://github.com/OWNER/REPO/pull/123"
+  - by URL, e.g. `https://github.com/OWNER/REPO/pull/123`
 
 ### Changed
 
