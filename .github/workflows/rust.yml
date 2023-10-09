@@ -31,11 +31,9 @@ jobs:
           - os: macOS-latest
             bins: --bins
     runs-on: ${{ matrix.os }}
-    # Token needed for the higher level `gh ...` tests
+    # Token needed for the integration tests using the gh command line
     env:
       GH_TOKEN: ${{ github.token }}
-      if: matrix.os != 'ubuntu-latest'
-      BINS: --bins
     steps:
     - uses: actions/checkout@v4
     - uses: r7kamura/rust-problem-matchers@v1
