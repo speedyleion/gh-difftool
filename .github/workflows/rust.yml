@@ -19,7 +19,7 @@ jobs:
     - uses: actions/checkout@v4
     - uses: r7kamura/rust-problem-matchers@v1
     - name: Build
-      run: cargo build --verbose
+      run: cargo build
 
   test:
     strategy:
@@ -38,7 +38,7 @@ jobs:
     - uses: actions/checkout@v4
     - uses: r7kamura/rust-problem-matchers@v1
     - name: Run tests
-      run: cargo test ${{ matrix.bins }} --verbose
+      run: cargo test ${{ matrix.bins }}
 
   android-build:
     runs-on: ubuntu-latest
