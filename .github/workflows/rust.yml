@@ -40,6 +40,7 @@ jobs:
     - name: Add target
       run: rustup target add ${{ matrix.cargo_build_target }}
     - name: Build
+      shell: bash
       run: scripts/build_dist.sh ci-run
 
   # test:
