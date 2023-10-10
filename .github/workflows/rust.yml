@@ -38,7 +38,7 @@ jobs:
     - uses: actions/checkout@v4
     - uses: r7kamura/rust-problem-matchers@v1
     - name: Add target
-      run: rustup target add ${{ matrix.target }}
+      run: rustup target add ${{ matrix.caargo_build_target }}
     - name: Build
       run: scripts/build_dist.sh ci-run
 
