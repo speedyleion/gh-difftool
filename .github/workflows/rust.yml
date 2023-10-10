@@ -13,7 +13,6 @@ jobs:
   build:
     strategy:
       matrix:
-        # target: [android-arm64, darwin-amd64, darwin-arm64, linux-amd64, windows-amd64]
         include:
           - target: android-arm64
             os: ubuntu-latest
@@ -37,48 +36,46 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - uses: r7kamura/rust-problem-matchers@v1
-    - name: Add target
-      run: rustup target add ${{ matrix.cargo_build_target }}
     - name: Build
       shell: bash
       run: scripts/build_dist.sh ci-run
 
-  # test:
-  #   strategy:
-  #     matrix:
-  #       os: [ubuntu-latest, macos-latest, windows-latest]
-  #       include:
-  #         - os: windows-latest
-  #           bins: --bins
-  #         - os: macOS-latest
-  #           bins: --bins
-  #   runs-on: ${{ matrix.os }}
-  #   # Token needed for the integration tests using the gh command line
-  #   env:
-  #     GH_TOKEN: ${{ github.token }}
-  #   steps:
-  #   - uses: actions/checkout@v4
-  #   - uses: r7kamura/rust-problem-matchers@v1
-  #   - name: What version of cargo
-  #     run: rustc -vV
-  #   - name: Run tests
-  #     run: cargo test ${{ matrix.bins }}
+  test:
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        include:
+          - os: windows-latest
+            bins: --bins
+          - os: macOS-latest
+            bins: --bins
+    runs-on: ${{ matrix.os }}
+    # Token needed for the integration tests using the gh command line
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+    - uses: actions/checkout@v4
+    - uses: r7kamura/rust-problem-matchers@v1
+    - name: What version of cargo
+      run: rustc -vV
+    - name: Run tests
+      run: cargo test ${{ matrix.bins }}
 
-  # rust-lint:
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #   - uses: actions/checkout@v4
-  #   - uses: r7kamura/rust-problem-matchers@v1
-  #   - name: Run Format
-  #     run: cargo fmt --all -- --check
-  #   - name: Run clippy
-  #     run: cargo clippy --all --all-features -- -D warnings
+  rust-lint:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+    - uses: r7kamura/rust-problem-matchers@v1
+    - name: Run Format
+      run: cargo fmt --all -- --check
+    - name: Run clippy
+      run: cargo clippy --all --all-features -- -D warnings
 
-  # markdown-lint:
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - uses: xt0rted/markdownlint-problem-matcher@v2
-  #     - uses: DavidAnson/markdownlint-cli2-action@v13
-  #       with:
-  #         globs: "**/*.md"
+  markdown-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: xt0rted/markdownlint-problem-matcher@v2
+      - uses: DavidAnson/markdownlint-cli2-action@v13
+        with:
+          globs: "**/*.md"

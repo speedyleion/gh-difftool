@@ -7,6 +7,7 @@ ext=""
 if [[ "${OSTYPE}" == "msys" ]]; then
   ext=".exe"
 fi
+                                                                                                     rustup target add ${CARGO_BUILD_TARGET}
 
 if [[ "${CARGO_BUILD_TARGET}" == *"android"* ]]; then
   underscore_target=$(echo "${CARGO_BUILD_TARGET}" | tr '-' '_')
