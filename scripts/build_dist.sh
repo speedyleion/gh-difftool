@@ -4,36 +4,18 @@
 # https://github.com/cli/gh-extension-precompile
 
 ext=""
-case "$OSTYPE" in
-  linux-gnu) os="linux" ;;
-  darwin*) os="darwin" ;;
-  msys) os="windows" ext=".exe" ;;
-  *) echo "Unsupported OS: $OSTYPE."; exit 1 ;;
-esac
-
-case $(uname -m) in
-  x86_64) arch="amd64" ;;
-  arm64) arch="arm64" ;;
-  *) echo "Unsupported architecture $(uname -m)."; exit 1 ;;
-esac
-
-cargo build --release && mkdir dist && cp target/release/gh-difftool"$ext" dist/gh-difftool_"$1"_"$os"-"$arch""$ext"
-
-# Cross compile for m1
-if [ $os == "darwin" ];
-then
-  rustup target add aarch64-apple-darwin
-  cargo build --target aarch64-apple-darwin --release && cp target/aarch64-apple-darwin/release/gh-difftool dist/gh-difftool_"$1"_darwin-arm64
+if [[ "${OSTYPE}" == "msys" ]]; then
+    ext=".exe"
 fi
 
-# Cross compile for android
-if [ $os == "linux" ];
-then
-  rustup target add aarch64-linux-android
-
-  CC_aarch64_linux_android=/usr/local/lib/android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android21-clang \
-  AR=/usr/local/lib/android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ar \
-  RANLIB=/usr/local/lib/android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ranlib \
-  CARGO_TARGET_AARCH64_LINUX_ANDROID_LINKER=/usr/local/lib/android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/linux-x86_64/bin/aarch64-linux-android21-clang \
-  cargo build --target aarch64-linux-android --release && cp target/aarch64-linux-android/release/gh-difftool dist/gh-difftool_"$1"_android-arm64
+if [[ "${CARGO_BUILD_TARGET}" == *"android"* ]]; then
+  underscore_target=$(echo "${CARGO_BUILD_TARGET}" | tr '-' '_')
+  UNDERSCORE_TARGET=$(echo "${underscore_target}" | tr '[:lower:]' '[:upper:]')
+  export CC_${underscore_target}=/usr/local/lib/android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/linux-x86_64/bin/${CARGO_BUILD_TARGET}21-clang
+  export AR=/usr/local/lib/android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ar
+  export RANLIB=/usr/local/lib/android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/linux-x86_64/bin/llvm-ranlib
+  export CARGO_TARGET_${UNDERSCORE_TARGET}_LINKER=/usr/local/lib/android/sdk/ndk/25.2.9519653/toolchains/llvm/prebuilt/linux-x86_64/bin/${CARGO_BUILD_TARGET}21-clang
 fi
+
+cargo build --release && mkdir dist && cp target/release/${CARGO_BUILD_TARGET}/gh-difftool"$ext" dist/gh-difftool_"${TARGET}""$ext"
+
