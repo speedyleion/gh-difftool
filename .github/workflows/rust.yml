@@ -56,8 +56,6 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - uses: r7kamura/rust-problem-matchers@v1
-    - name: What version of cargo
-      run: rustc -vV
     - name: Run tests
       run: cargo test ${{ matrix.bins }}
 
