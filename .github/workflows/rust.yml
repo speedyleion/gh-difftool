@@ -31,11 +31,14 @@ jobs:
             os: windows-latest
             cargo_build_target: x86_64-pc-windows-msvc
     runs-on: ${{ matrix.os }}
+    env:
+      CARGO_BUILD_TARGET: ${{ matrix.cargo_build_target }}
+      TARGET: ${{ matrix.target }}
     steps:
     - uses: actions/checkout@v4
     - uses: r7kamura/rust-problem-matchers@v1
     - name: Build
-      run: cargo build
+      run: scripts/build_dist.sh ci-run
 
   test:
     strategy:
@@ -55,14 +58,6 @@ jobs:
     - uses: r7kamura/rust-problem-matchers@v1
     - name: Run tests
       run: cargo test ${{ matrix.bins }}
-
-  android-build:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v4
-    - uses: r7kamura/rust-problem-matchers@v1
-    - name: Build
-      run: scripts/build_dist.sh ci-run
 
   rust-lint:
     runs-on: ubuntu-latest
