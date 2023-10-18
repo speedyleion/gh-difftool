@@ -17,7 +17,7 @@ serde_json = "1.0.107"
 tempfile = "3.8.0"
 tokio = { version = "1.33.0", features = ["full"] }
 url = "2.4.1"
-which = "4.4.2"
+which = "5.0.0"
 
 [dev-dependencies]
 assert_cmd = "2.0.12"
