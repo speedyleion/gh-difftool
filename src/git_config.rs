@@ -9,7 +9,6 @@ use once_cell::sync::Lazy;
 use std::collections::HashMap;
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
-use std::process::Stdio;
 use tokio::process::Command;
 
 // Looking at the Git source code the main entry point is
@@ -26,6 +25,7 @@ static DIFFTOOLS: Lazy<HashMap<&str, Vec<&str>>> = Lazy::new(|| {
     m.insert("bc3", vec!["bcomp", "bcompare"]);
     m.insert("bc4", vec!["bcomp", "bcompare"]);
     m.insert("meld", vec!["meld"]);
+    m.insert("vimdiff", vec!["vimdiff"]);
     m.insert("gvimdiff", vec!["gvimdiff"]);
     m
 });
@@ -65,9 +65,12 @@ impl Difftool {
         let mut command = Command::new(&self.program);
         command.arg(local);
         command.arg(remote);
-        command.stdout(Stdio::piped());
-        command.stderr(Stdio::piped());
-        command.output().await?;
+
+        // In order to work with terminal diff tools like vimdiff we need to
+        // spawn the process instead of using Command::output
+        let mut child = command.spawn()?;
+        let _ = child.wait().await?;
+
         // Some difftools, like bcompare, will return non zero status when there is a diff and 0
         // only when there are no changes.  This prevents us from trusting the status
         Ok(())
