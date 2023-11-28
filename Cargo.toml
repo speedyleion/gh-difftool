@@ -1,6 +1,6 @@
 [package]
 name = "gh-difftool"
-version = "0.1.15"
+version = "1.0.0"
 edition = "2021"
 
 [dependencies]
