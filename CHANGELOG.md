@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2023-11-27
+
+### Added
+
+- Support for vimdiff as a difftool
+
 ## [0.1.15] - 2023-10-07
 
 ### Changed
@@ -153,7 +159,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Initial release
 
-[unreleased]: https://github.com/olivierlacan/keep-a-changelog/compare/v0.1.15...HEAD
+[unreleased]: https://github.com/olivierlacan/keep-a-changelog/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/speedyleion/gh-difftool/releases/tag/v1.0.0
 [0.1.15]: https://github.com/speedyleion/gh-difftool/releases/tag/v0.1.15
 [0.1.14]: https://github.com/speedyleion/gh-difftool/releases/tag/v0.1.14
 [0.1.13]: https://github.com/speedyleion/gh-difftool/releases/tag/v0.1.13
