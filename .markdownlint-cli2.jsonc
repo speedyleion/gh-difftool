@@ -1,6 +1,6 @@
 {
   "config": {
-    "no-duplicate-header": {
+    "no-duplicate-heading": {
         // Allow multiple "Added" sections in the changelog
         "siblings_only": true
     },
