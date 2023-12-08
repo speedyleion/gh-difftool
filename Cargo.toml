@@ -8,7 +8,7 @@ anyhow = "1.0.75"
 clap = { version = "4.4.10", features = ["derive", "env"] }
 displaydoc = "0.2.4"
 futures = { version = "0.3.29", default_features = false }
-gix-config = "0.31.0"
+gix-config = "0.32.1"
 once_cell = "1.19.0"
 parse_link_header = "0.3.3"
 reqwest = { version = "0.11.22", features = ["blocking", "native-tls-vendored"] }
