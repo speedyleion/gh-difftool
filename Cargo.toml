@@ -21,7 +21,7 @@ which = "5.0.0"
 
 [dev-dependencies]
 assert_cmd = "2.0.12"
-httpmock = "0.6.8"
+httpmock = "0.7.0"
 mockall = "0.12.1"
 temp_testdir = "0.2.3"
 textwrap = "0.16.0"
