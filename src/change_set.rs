@@ -15,7 +15,7 @@ use std::process::{Command, Stdio};
 #[derive(Default, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct Change {
     pub filename: String,
-    pub raw_url: String,
+    pub contents_url: String,
     pub patch: String,
     pub status: String,
 }
@@ -27,7 +27,7 @@ impl Change {
         P2: AsRef<Path>,
     {
         // This is not an ideal implementation, but it works for now.
-        // When the file is removed (deleted) the Github API provides a `raw_url` which points to
+        // When the file is removed (deleted) the Github API provides a `contents_url` which points to
         // the old version of the file, not an empty version. This makes sense as an empty file is
         // different than a file that doesn't exist. The problem comes in that the consumers of
         // [`Change`] happen to create the original and new files instead of letting [`Change`] do
@@ -182,15 +182,15 @@ mod tests {
 
     /// Convert `filenames` to a vector of ['Change']
     ///
-    /// The `raw_url` and the `patch` in the resultant ['Change']es will all be the same.
+    /// The `contents_url` and the `patch` in the resultant ['Change']es will all be the same.
     fn filenames_to_changes(filenames: &[&str]) -> Vec<Change> {
-        let raw_url = String::from("raw_url");
+        let contents_url = String::from("contents_url");
         let patch = String::from("patch");
         filenames
             .iter()
             .map(|f| Change {
                 filename: (*f).to_owned(),
-                raw_url: raw_url.to_owned(),
+                contents_url: contents_url.to_owned(),
                 patch: patch.to_owned(),
                 status: String::from("modified"),
             })
@@ -234,7 +234,7 @@ mod tests {
             ChangeSet {
                 changes: vec![Change {
                     filename: String::from("Cargo.toml"),
-                    raw_url: String::from("https://github.com/speedyleion/gh-difftool/raw/befb7bf69c3c8ba97c714d57c8dadd9621021c84/Cargo.toml"),
+                    contents_url: String::from("https://api.github.com/repos/speedyleion/gh-difftool/contents/Cargo.toml?ref=befb7bf69c3c8ba97c714d57c8dadd9621021c84"),
                     patch: String::from("@@ -6,3 +6,7 @@ edition = \"2021\"\n [dev-dependencies]\n assert_cmd = \"2.0.4\"\n mockall = \"0.11.2\"\n+textwrap = \"0.15.1\"\n+\n+[dependencies]\n+patch = \"0.6.0\""),
                     status: String::from("modified"),
                 }]
@@ -262,19 +262,19 @@ mod tests {
             [
               {
                 "filename": "Cargo.toml",
-                "raw_url": "stuff",
+                "contents_url": "stuff",
                 "patch": "more_stuff",
                 "status": "modified"
               },
               {
                 "filename": "yes/no/maybe.idk",
-                "raw_url": "sure",
+                "contents_url": "sure",
                 "patch": "why not",
                 "status": "modified"
               },
               {
                 "filename": "what/when/where.stuff",
-                "raw_url": "idk",
+                "contents_url": "idk",
                 "patch": "I guess",
                 "status": "modified"
               }
@@ -287,19 +287,19 @@ mod tests {
                 changes: vec![
                     Change {
                         filename: String::from("Cargo.toml"),
-                        raw_url: String::from("stuff"),
+                        contents_url: String::from("stuff"),
                         patch: String::from("more_stuff"),
                         status: String::from("modified"),
                     },
                     Change {
                         filename: String::from("yes/no/maybe.idk"),
-                        raw_url: String::from("sure"),
+                        contents_url: String::from("sure"),
                         patch: String::from("why not"),
                         status: String::from("modified"),
                     },
                     Change {
                         filename: String::from("what/when/where.stuff"),
-                        raw_url: String::from("idk"),
+                        contents_url: String::from("idk"),
                         patch: String::from("I guess"),
                         status: String::from("modified"),
                     }
@@ -314,19 +314,19 @@ mod tests {
             changes: vec![
                 Change {
                     filename: String::from("Cargo.toml"),
-                    raw_url: String::from("stuff"),
+                    contents_url: String::from("stuff"),
                     patch: String::from("more_stuff"),
                     status: String::from("modified"),
                 },
                 Change {
                     filename: String::from("yes/no/maybe.idk"),
-                    raw_url: String::from("sure"),
+                    contents_url: String::from("sure"),
                     patch: String::from("why not"),
                     status: String::from("modified"),
                 },
                 Change {
                     filename: String::from("what/when/where.stuff"),
-                    raw_url: String::from("idk"),
+                    contents_url: String::from("idk"),
                     patch: String::from("I guess"),
                     status: String::from("modified"),
                 },
@@ -341,13 +341,13 @@ mod tests {
                 changes: vec![
                     Change {
                         filename: String::from("Cargo.toml"),
-                        raw_url: String::from("stuff"),
+                        contents_url: String::from("stuff"),
                         patch: String::from("more_stuff"),
                         status: String::from("modified"),
                     },
                     Change {
                         filename: String::from("yes/no/maybe.idk"),
-                        raw_url: String::from("sure"),
+                        contents_url: String::from("sure"),
                         patch: String::from("why not"),
                         status: String::from("modified"),
                     },
@@ -438,7 +438,7 @@ mod tests {
         let diff = "@@ -1,3 +1,3 @@\n line one\n-line two\n+line changed\n line three";
         let change = Change {
             filename: "what/when/where.stuff".to_string(),
-            raw_url: "idk".to_string(),
+            contents_url: "idk".to_string(),
             patch: diff.to_string(),
             status: String::from("modified"),
         };
@@ -463,7 +463,7 @@ mod tests {
         let diff = "@@ -1,2 +1,3 @@\n line one\n+line two\n line three";
         let change = Change {
             filename: "what/when/where.stuff".to_string(),
-            raw_url: "idk".to_string(),
+            contents_url: "idk".to_string(),
             patch: diff.to_string(),
             status: String::from("modified"),
         };
@@ -483,7 +483,7 @@ mod tests {
         let message_start = format!("Failed to patch {:?} to {:?}: patch: **** malformed", b, a);
         let change = Change {
             filename: "what/when/where.stuff".to_string(),
-            raw_url: "idk".to_string(),
+            contents_url: "idk".to_string(),
             patch: diff.to_string(),
             status: String::from("modified"),
         };
@@ -499,19 +499,19 @@ mod tests {
         let temp = TempDir::default().permanent();
         let a = temp.join("a");
         let b = temp.join("b");
-        let raw_url_contents = dedent(
+        let contents = dedent(
             "
             line one
             line two
             line three
             ",
         );
-        fs::write(&b, raw_url_contents).unwrap();
+        fs::write(&b, contents).unwrap();
 
         let diff = "@@ -1,3 +0,0 @@\n-line one\n-line two\n-line three";
         let change = Change {
             filename: "what/when/where.stuff".to_string(),
-            raw_url: "idk".to_string(),
+            contents_url: "idk".to_string(),
             patch: diff.to_string(),
             status: String::from("removed"),
         };

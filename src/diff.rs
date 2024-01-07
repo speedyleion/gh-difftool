@@ -5,6 +5,7 @@
 
 //! Launches a difftool to compare changes
 
+use crate::gh_interface;
 use crate::git_config;
 use crate::Change;
 use anyhow::Result;
@@ -64,7 +65,7 @@ impl Diff {
                 .expect("Should always have a parent temp path"),
         )?;
 
-        let contents = reqwest::get(&change.raw_url).await?.text().await?;
+        let contents = gh_interface::file_contents(change).await?;
         fs::write(&file, contents)?;
         Ok(file)
     }
@@ -91,6 +92,7 @@ mod tests {
     #[cfg(not(windows))]
     const EOL: &'static str = "\n";
 
+    use base64::{engine::general_purpose::STANDARD, Engine as _};
     use httpmock::prelude::GET;
     use httpmock::MockServer;
     use std::fs;
@@ -122,7 +124,7 @@ mod tests {
         let expected = format!("{EOL}line one{EOL}line two{EOL}line three{EOL}");
         let change = Change {
             filename: "ignore_me".to_string(),
-            raw_url: "sure".to_string(),
+            contents_url: "sure".to_string(),
             patch: diff.to_string(),
             status: "modified".to_string(),
         };
@@ -135,16 +137,19 @@ mod tests {
     async fn get_new_content() {
         let temp = TempDir::default();
         let contents = "line one\nline two";
+        let encoded = STANDARD.encode(contents.as_bytes());
         let server = MockServer::start();
         let mock = server.mock(|when, then| {
             when.method(GET).path("/one.c");
             then.status(200)
                 .header("content-type", "text/html")
-                .body(contents);
+                .body(format!(
+                    "{{\"content\":\"{encoded}\", \"encoding\":\"base64\"}}"
+                ));
         });
         let change = Change {
             filename: "foo/bar/fish.ext".to_string(),
-            raw_url: server.url("/one.c"),
+            contents_url: server.url("/one.c"),
             patch: "@@ -1,3 +1,3 @@\n doesn't matter".to_string(),
             status: "modified".to_string(),
         };
@@ -162,18 +167,20 @@ mod tests {
     async fn getting_a_second_set_of_new_content() {
         let temp = TempDir::default();
         let contents = "something\nelse";
-
+        let encoded = STANDARD.encode(contents.as_bytes());
         let server = MockServer::start();
         let mock = server.mock(|when, then| {
             when.method(GET).path("/some_raw_url/path");
             then.status(200)
                 .header("content-type", "text/html")
-                .body(contents);
+                .body(format!(
+                    "{{\"content\":\"{encoded}\", \"encoding\":\"base64\"}}"
+                ));
         });
 
         let change = Change {
             filename: "foo/bar/fish.ext".to_string(),
-            raw_url: server.url("/some_raw_url/path"),
+            contents_url: server.url("/some_raw_url/path"),
             patch: "@@ -1,3 +1,3 @@\n doesn't matter".to_string(),
             status: "modified".to_string(),
         };
