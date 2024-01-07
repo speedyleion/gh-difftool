@@ -9,11 +9,13 @@ use crate::change_set::ChangeSet;
 use crate::cmd::Cmd;
 use crate::Change;
 use anyhow::Result;
+use base64::{engine::general_purpose::STANDARD, Engine as _};
 use serde::{Deserialize, Serialize};
 use std::ffi::{OsStr, OsString};
 use std::fmt::{Display, Formatter};
 use std::io::{Error, ErrorKind};
 use std::process::Stdio;
+use tokio::process::Command;
 
 #[derive(Clone, Default, PartialEq, Eq, Debug)]
 pub struct PullRequest {
@@ -56,6 +58,60 @@ impl Display for Repo {
     }
 }
 
+#[derive(Default, PartialEq, Eq, Debug, Serialize, Deserialize)]
+struct Content {
+    content: String,
+    // Not using the encoding right now, guessing it will always be base64
+    encoding: String,
+}
+
+fn output_to_string(output: std::process::Output) -> Result<String> {
+    if output.status.success() {
+        Ok(String::from_utf8(output.stdout)?)
+    } else {
+        Err(Error::new(
+            ErrorKind::Other,
+            String::from_utf8(output.stderr)?,
+        ))?
+    }
+}
+
+async fn run_async_command<I, T>(args: I) -> Result<String>
+where
+    I: IntoIterator<Item = T>,
+    T: AsRef<OsStr>,
+{
+    let mut command = Command::new("gh");
+    for arg in args {
+        command.arg(OsString::from(arg.as_ref()));
+    }
+    command.stdout(Stdio::piped());
+    command.stderr(Stdio::piped());
+    let output = command.output().await?;
+    output_to_string(output)
+}
+
+pub async fn file_contents(change: &Change) -> Result<String> {
+    let output = run_async_command([
+        "api",
+        "--method",
+        "GET",
+        "-H",
+        "Accept: application/vnd.github+json",
+        &change.contents_url,
+    ])
+    .await?;
+
+    let content: Content = serde_json::from_str(output.as_str())?;
+
+    // Not sure why, but the base64 encoded contents from github has newlines
+    // in it, removing these newlines still leaves the newlines that are encoded
+    // into the base64 string so the diff will still be good.
+    let cleaned = content.content.replace('\n', "");
+    let bytes = STANDARD.decode(cleaned)?;
+    Ok(String::from_utf8(bytes)?)
+}
+
 #[derive(Debug, Default)]
 pub struct GhCli<C> {
     command: C,
@@ -78,15 +134,7 @@ impl<C: Cmd> GhCli<C> {
         command.stdout(Stdio::piped());
         command.stderr(Stdio::piped());
         let output = command.output()?;
-        let status = output.status;
-        if status.success() {
-            Ok(String::from_utf8(output.stdout)?)
-        } else {
-            Err(Error::new(
-                ErrorKind::Other,
-                String::from_utf8(output.stderr)?,
-            ))?
-        }
+        output_to_string(output)
     }
 
     pub fn change_set(&mut self, pr: &PullRequest) -> Result<ChangeSet> {
@@ -182,6 +230,8 @@ impl<C: Cmd> GhCli<C> {
 mod tests {
     use super::*;
     use crate::change_set::{Change, ChangeSet};
+    use httpmock::Method::GET;
+    use httpmock::MockServer;
     use mockall::mock;
     use mockall::predicate::eq;
     use std::ffi::OsString;
@@ -327,7 +377,7 @@ mod tests {
             ChangeSet {
                 changes: vec![Change {
                     filename: String::from("Cargo.toml"),
-                    raw_url: String::from("https://github.com/speedyleion/gh-difftool/raw/befb7bf69c3c8ba97c714d57c8dadd9621021c84/Cargo.toml"),
+                    contents_url: String::from("https://api.github.com/repos/speedyleion/gh-difftool/contents/Cargo.toml?ref=befb7bf69c3c8ba97c714d57c8dadd9621021c84"),
                     patch: String::from("@@ -6,3 +6,7 @@ edition = \"2021\"\n [dev-dependencies]\n assert_cmd = \"2.0.4\"\n mockall = \"0.11.2\"\n+textwrap = \"0.15.1\"\n+\n+[dependencies]\n+patch = \"0.6.0\""),
                     status: String::from("modified"),
                 }]
@@ -344,13 +394,13 @@ mod tests {
                 changes: vec![
                     Change {
                         filename: String::from("Cargo.toml"),
-                        raw_url: String::from("https://github.com/speedyleion/gh-difftool/raw/befb7bf69c3c8ba97c714d57c8dadd9621021c84/Cargo.toml"),
+                        contents_url: String::from("https://api.github.com/repos/speedyleion/gh-difftool/contents/Cargo.toml?ref=befb7bf69c3c8ba97c714d57c8dadd9621021c84"),
                         patch: String::from("@@ -6,3 +6,7 @@ edition = \"2021\"\n [dev-dependencies]\n assert_cmd = \"2.0.4\"\n mockall = \"0.11.2\"\n+textwrap = \"0.15.1\"\n+\n+[dependencies]\n+patch = \"0.6.0\""),
                         status: String::from("modified"),
                     },
                     Change {
                         filename: String::from("src/main.rs"),
-                        raw_url: String::from("https://github.com/speedyleion/gh-difftool/raw/befb7bf69c3c8ba97c714d57c8dadd9621021c84/src%2Fmain.rs"),
+                        contents_url: String::from("https://api.github.com/repos/speedyleion/gh-difftool/contents/src%2Fmain.rs?ref=befb7bf69c3c8ba97c714d57c8dadd9621021c84"),
                         patch: String::from("@@ -1,4 +1,5 @@\n mod gh_interface;\n+mod patch;\n \n fn main() {\n     println!(\"Hello, world!\");"),
                         status: String::from("modified"),
                     },
@@ -511,5 +561,112 @@ mod tests {
             format!("{}", root_cause),
             "none of the git remotes configured for this repository point to a known GitHub host. To tell gh about a new GitHub host, please use `gh auth login`"
         );
+    }
+
+    // The output of
+    // `gh api https://api.github.com/repos/speedyleion/gh-difftool/contents/Cargo.toml?ref=befb7bf69c3c8ba97c714d57c8dadd9621021c84`
+    const CARGO_CONTENTS: &str = r#"
+        {
+          "name": "Cargo.toml",
+          "path": "Cargo.toml",
+          "sha": "b0a3777df4afc764c34234524267970025d55467",
+          "size": 178,
+          "url": "https://api.github.com/repos/speedyleion/gh-difftool/contents/Cargo.toml?ref=befb7bf69c3c8ba97c714d57c8dadd9621021c84",
+          "html_url": "https://github.com/speedyleion/gh-difftool/blob/befb7bf69c3c8ba97c714d57c8dadd9621021c84/Cargo.toml",
+          "git_url": "https://api.github.com/repos/speedyleion/gh-difftool/git/blobs/b0a3777df4afc764c34234524267970025d55467",
+          "download_url": "https://raw.githubusercontent.com/speedyleion/gh-difftool/befb7bf69c3c8ba97c714d57c8dadd9621021c84/Cargo.toml",
+          "type": "file",
+          "content": "W3BhY2thZ2VdCm5hbWUgPSAiZ2gtZGlmZnRvb2wiCnZlcnNpb24gPSAiMC4x\nLjAiCmVkaXRpb24gPSAiMjAyMSIKCltkZXYtZGVwZW5kZW5jaWVzXQphc3Nl\ncnRfY21kID0gIjIuMC40Igptb2NrYWxsID0gIjAuMTEuMiIKdGV4dHdyYXAg\nPSAiMC4xNS4xIgoKW2RlcGVuZGVuY2llc10KcGF0Y2ggPSAiMC42LjAiCg==\n",
+          "encoding": "base64",
+          "_links": {
+            "self": "https://api.github.com/repos/speedyleion/gh-difftool/contents/Cargo.toml?ref=befb7bf69c3c8ba97c714d57c8dadd9621021c84",
+            "git": "https://api.github.com/repos/speedyleion/gh-difftool/git/blobs/b0a3777df4afc764c34234524267970025d55467",
+            "html": "https://github.com/speedyleion/gh-difftool/blob/befb7bf69c3c8ba97c714d57c8dadd9621021c84/Cargo.toml"
+          }
+        }
+        "#;
+
+    // The output of `gh api https://api.github.com/repos/speedyleion/gh-difftool/contents/src%2Fmain.rs?ref=befb7bf69c3c8ba97c714d57c8dadd9621021c84`
+    const MAIN_CONTENTS: &str = r#"
+        {
+          "name": "main.rs",
+          "path": "src/main.rs",
+          "sha": "cb71da67691cdf5f595b4e64d4feaf0bdd7798f6",
+          "size": 75,
+          "url": "https://api.github.com/repos/speedyleion/gh-difftool/contents/src/main.rs?ref=befb7bf69c3c8ba97c714d57c8dadd9621021c84",
+          "html_url": "https://github.com/speedyleion/gh-difftool/blob/befb7bf69c3c8ba97c714d57c8dadd9621021c84/src/main.rs",
+          "git_url": "https://api.github.com/repos/speedyleion/gh-difftool/git/blobs/cb71da67691cdf5f595b4e64d4feaf0bdd7798f6",
+          "download_url": "https://raw.githubusercontent.com/speedyleion/gh-difftool/befb7bf69c3c8ba97c714d57c8dadd9621021c84/src/main.rs",
+          "type": "file",
+          "content": "bW9kIGdoX2ludGVyZmFjZTsKbW9kIHBhdGNoOwoKZm4gbWFpbigpIHsKICAg\nIHByaW50bG4hKCJIZWxsbywgd29ybGQhIik7Cn0K\n",
+          "encoding": "base64",
+          "_links": {
+            "self": "https://api.github.com/repos/speedyleion/gh-difftool/contents/src/main.rs?ref=befb7bf69c3c8ba97c714d57c8dadd9621021c84",
+            "git": "https://api.github.com/repos/speedyleion/gh-difftool/git/blobs/cb71da67691cdf5f595b4e64d4feaf0bdd7798f6",
+            "html": "https://github.com/speedyleion/gh-difftool/blob/befb7bf69c3c8ba97c714d57c8dadd9621021c84/src/main.rs"
+          }
+        }
+    "#;
+
+    #[tokio::test]
+    async fn contents_of_cargo_toml() {
+        let server = MockServer::start();
+        let mock = server.mock(|when, then| {
+            when.method(GET).path("/cargo_toml/contents");
+            then.status(200)
+                .header("content-type", "text/html")
+                .body(CARGO_CONTENTS);
+        });
+        let change = Change {
+            contents_url: server.url("/cargo_toml/contents"),
+            ..Default::default()
+        };
+        let expected = r#"
+            [package]
+            name = "gh-difftool"
+            version = "0.1.0"
+            edition = "2021"
+
+            [dev-dependencies]
+            assert_cmd = "2.0.4"
+            mockall = "0.11.2"
+            textwrap = "0.15.1"
+
+            [dependencies]
+            patch = "0.6.0"
+        "#;
+        assert_eq!(
+            file_contents(&change).await.unwrap(),
+            textwrap::dedent(expected).trim_start()
+        );
+        mock.assert();
+    }
+
+    #[tokio::test]
+    async fn contents_of_main() {
+        let server = MockServer::start();
+        let mock = server.mock(|when, then| {
+            when.method(GET).path("/main/contents");
+            then.status(200)
+                .header("content-type", "text/html")
+                .body(MAIN_CONTENTS);
+        });
+        let change = Change {
+            contents_url: server.url("/main/contents"),
+            ..Default::default()
+        };
+        let expected = r#"
+            mod gh_interface;
+            mod patch;
+
+            fn main() {
+                println!("Hello, world!");
+            }
+        "#;
+        assert_eq!(
+            file_contents(&change).await.unwrap(),
+            textwrap::dedent(expected).trim_start()
+        );
+        mock.assert();
     }
 }
