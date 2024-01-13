@@ -21,7 +21,7 @@ jobs:
             os: macos-latest
             cargo_build_target: x86_64-apple-darwin
           - target: darwin-arm64
-            os: macos-latest
+            os: macos-13-arm64
             cargo_build_target: aarch64-apple-darwin
           - target: linux-amd64
             os: ubuntu-latest
@@ -43,11 +43,11 @@ jobs:
   test:
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest, windows-latest]
+        os: [ubuntu-latest, macos-13-arm64, windows-latest]
         include:
           - os: windows-latest
             bins: --bins
-          - os: macOS-latest
+          - os: macos-13-arm64
             bins: --bins
     runs-on: ${{ matrix.os }}
     # Token needed for the integration tests using the gh command line
