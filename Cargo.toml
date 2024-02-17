@@ -24,7 +24,7 @@ assert_cmd = "2.0.13"
 httpmock = "0.7.0"
 mockall = "0.12.1"
 temp_testdir = "0.2.3"
-textwrap = "0.16.0"
+textwrap = "0.16.1"
 yare = "2.0.0"
 
 
