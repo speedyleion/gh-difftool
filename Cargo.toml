@@ -20,7 +20,7 @@ which = "6"
 base64 = "0.22"
 
 [dev-dependencies]
-assert_cmd = "2"
+assert_cmd = "2.0.14"
 httpmock = "0.7"
 mockall = "0.12"
 temp_testdir = "0.2"
