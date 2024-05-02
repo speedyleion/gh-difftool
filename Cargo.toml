@@ -22,7 +22,7 @@ base64 = "0.22"
 [dev-dependencies]
 assert_cmd = "2"
 httpmock = "0.7"
-mockall = "0.12"
+mockall = "0.12.1"
 temp_testdir = "0.2"
 textwrap = "0.16"
 yare = "3"
