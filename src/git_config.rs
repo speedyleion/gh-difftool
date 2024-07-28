@@ -79,7 +79,7 @@ impl Difftool {
 
 fn get_difftool_program(git_dir: impl AsRef<Path>, name: impl AsRef<str>) -> Result<String> {
     let config = git_config(git_dir)?;
-    match config.string("difftool", Some(name.as_ref().into()), "path") {
+    match config.string_by("difftool", Some(name.as_ref().into()), "path") {
         Some(path) => Ok(path.to_string()),
         None => Ok(lookup_known_tool_program(&name)?),
     }
@@ -103,13 +103,13 @@ fn find_first_program(programs: &[&str]) -> Option<String> {
 
 fn get_config_difftool(dir: impl AsRef<Path>) -> Result<String> {
     let config = git_config(dir)?;
-    match config.string("diff", None, "tool") {
+    match config.string_by("diff", None, "tool") {
         Some(tool) => Ok(tool.to_string()),
         // Note: due to the global git config being found and the users diff setting being taken
         // form that this None branch isn't unit tested.
         None => {
             // Similar to git, we fall back to the merge tool if it's available
-            match config.string("merge", None, "tool") {
+            match config.string_by("merge", None, "tool") {
                 Some(tool) => Ok(tool.to_string()),
                 None => Err(Error::NoDifftoolConfigured.into()),
             }
@@ -193,7 +193,7 @@ mod tests {
         let config = git_config(temp).unwrap();
 
         assert_eq!(
-            config.string("user", None, "name").unwrap().to_string(),
+            config.string_by("user", None, "name").unwrap().to_string(),
             "Me".to_string()
         );
     }
