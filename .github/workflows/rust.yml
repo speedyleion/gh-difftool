@@ -15,7 +15,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: list files
-        run: ls -la /usr/local/lib/android/sdk/
+        run: find /usr/local/lib/android/sdk/ndk -name '*clang' -type f
 
   # build:
   #   strategy:
