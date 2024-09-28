@@ -15,8 +15,11 @@ use std::process::{Command, Stdio};
 #[derive(Default, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct Change {
     pub filename: String,
+    /// The previous_filename will be present for renamed files
+    pub previous_filename: Option<String>,
     pub contents_url: String,
-    pub patch: String,
+    /// Patches are *not* present for files that are only renamed
+    pub patch: Option<String>,
     pub status: String,
 }
 
@@ -38,6 +41,10 @@ impl Change {
             fs::write(src, "")?;
             return Ok(());
         }
+        if self.status == "renamed" {
+            fs::copy(&src, &dest)?;
+            return Ok(());
+        }
         let mut cmd = Command::new("patch");
         cmd.args([
             "-R",
@@ -51,7 +58,12 @@ impl Change {
         let mut child = cmd.spawn()?;
         let mut stdin = child.stdin.take().expect("failed to get stdin for `patch`");
 
-        let mut contents = self.patch.clone();
+        // Renamed files don't have a patch
+        let mut contents = self
+            .patch
+            .as_ref()
+            .expect("Expected a patch for the file")
+            .clone();
 
         // Not sure how to force this in a minimum reproducible example.
         // When using patch and deleting things close to the end of the file it seems that missing
@@ -185,14 +197,14 @@ mod tests {
     /// The `contents_url` and the `patch` in the resultant ['Change']es will all be the same.
     fn filenames_to_changes(filenames: &[&str]) -> Vec<Change> {
         let contents_url = String::from("contents_url");
-        let patch = String::from("patch");
         filenames
             .iter()
             .map(|f| Change {
                 filename: (*f).to_owned(),
                 contents_url: contents_url.to_owned(),
-                patch: patch.to_owned(),
+                patch: Some("patch".into()),
                 status: String::from("modified"),
+                previous_filename: None,
             })
             .collect::<Vec<_>>()
     }
@@ -235,8 +247,9 @@ mod tests {
                 changes: vec![Change {
                     filename: String::from("Cargo.toml"),
                     contents_url: String::from("https://api.github.com/repos/speedyleion/gh-difftool/contents/Cargo.toml?ref=befb7bf69c3c8ba97c714d57c8dadd9621021c84"),
-                    patch: String::from("@@ -6,3 +6,7 @@ edition = \"2021\"\n [dev-dependencies]\n assert_cmd = \"2.0.4\"\n mockall = \"0.11.2\"\n+textwrap = \"0.15.1\"\n+\n+[dependencies]\n+patch = \"0.6.0\""),
+                    patch: Some("@@ -6,3 +6,7 @@ edition = \"2021\"\n [dev-dependencies]\n assert_cmd = \"2.0.4\"\n mockall = \"0.11.2\"\n+textwrap = \"0.15.1\"\n+\n+[dependencies]\n+patch = \"0.6.0\"".into()),
                     status: String::from("modified"),
+                    previous_filename: None,
                 }]
             }
         );
@@ -288,20 +301,23 @@ mod tests {
                     Change {
                         filename: String::from("Cargo.toml"),
                         contents_url: String::from("stuff"),
-                        patch: String::from("more_stuff"),
+                        patch: Some("more_stuff".into()),
                         status: String::from("modified"),
+                        previous_filename: None,
                     },
                     Change {
                         filename: String::from("yes/no/maybe.idk"),
                         contents_url: String::from("sure"),
-                        patch: String::from("why not"),
+                        patch: Some("why not".into()),
                         status: String::from("modified"),
+                        previous_filename: None,
                     },
                     Change {
                         filename: String::from("what/when/where.stuff"),
                         contents_url: String::from("idk"),
-                        patch: String::from("I guess"),
+                        patch: Some("I guess".into()),
                         status: String::from("modified"),
+                        previous_filename: None,
                     }
                 ]
             }
@@ -315,20 +331,23 @@ mod tests {
                 Change {
                     filename: String::from("Cargo.toml"),
                     contents_url: String::from("stuff"),
-                    patch: String::from("more_stuff"),
+                    patch: Some("more_stuff".into()),
                     status: String::from("modified"),
+                    previous_filename: None,
                 },
                 Change {
                     filename: String::from("yes/no/maybe.idk"),
                     contents_url: String::from("sure"),
-                    patch: String::from("why not"),
+                    patch: Some("why not".into()),
                     status: String::from("modified"),
+                    previous_filename: None,
                 },
                 Change {
                     filename: String::from("what/when/where.stuff"),
                     contents_url: String::from("idk"),
-                    patch: String::from("I guess"),
+                    patch: Some("I guess".into()),
                     status: String::from("modified"),
+                    previous_filename: None,
                 },
             ],
         };
@@ -342,14 +361,16 @@ mod tests {
                     Change {
                         filename: String::from("Cargo.toml"),
                         contents_url: String::from("stuff"),
-                        patch: String::from("more_stuff"),
+                        patch: Some("more_stuff".into()),
                         status: String::from("modified"),
+                        previous_filename: None,
                     },
                     Change {
                         filename: String::from("yes/no/maybe.idk"),
                         contents_url: String::from("sure"),
-                        patch: String::from("why not"),
+                        patch: Some("why not".into()),
                         status: String::from("modified"),
+                        previous_filename: None,
                     },
                 ]
             }
@@ -439,8 +460,9 @@ mod tests {
         let change = Change {
             filename: "what/when/where.stuff".to_string(),
             contents_url: "idk".to_string(),
-            patch: diff.to_string(),
+            patch: Some(diff.to_string()),
             status: String::from("modified"),
+            previous_filename: None,
         };
         let expected = format!("{EOL}line one{EOL}line two{EOL}line three{EOL}");
         change.reverse_apply(&b, &a).unwrap();
@@ -464,8 +486,9 @@ mod tests {
         let change = Change {
             filename: "what/when/where.stuff".to_string(),
             contents_url: "idk".to_string(),
-            patch: diff.to_string(),
+            patch: Some(diff.to_string()),
             status: String::from("modified"),
+            previous_filename: None,
         };
         let expected = format!("{EOL}line one{EOL}line three{EOL}");
         change.reverse_apply(&b, &a).unwrap();
@@ -484,8 +507,9 @@ mod tests {
         let change = Change {
             filename: "what/when/where.stuff".to_string(),
             contents_url: "idk".to_string(),
-            patch: diff.to_string(),
+            patch: Some(diff.to_string()),
             status: String::from("modified"),
+            previous_filename: None,
         };
 
         let error = change.reverse_apply(&b, &a).unwrap_err();
@@ -512,8 +536,36 @@ mod tests {
         let change = Change {
             filename: "what/when/where.stuff".to_string(),
             contents_url: "idk".to_string(),
-            patch: diff.to_string(),
+            patch: Some(diff.to_string()),
             status: String::from("removed"),
+            previous_filename: None,
+        };
+        let expected = format!("\nline one\nline two\nline three\n");
+        change.reverse_apply(&b, &a).unwrap();
+        assert_eq!(fs::read(&a).unwrap(), expected.into_bytes());
+        assert_eq!(fs::read(&b).unwrap(), "".as_bytes());
+    }
+
+    #[test]
+    fn file_renamed() {
+        let temp = TempDir::default().permanent();
+        let a = temp.join("a");
+        let b = temp.join("b");
+        let contents = dedent(
+            "
+            line one
+            line two
+            line three
+            ",
+        );
+        fs::write(&b, contents).unwrap();
+
+        let change = Change {
+            filename: "what/when/where.stuff".to_string(),
+            contents_url: "idk".to_string(),
+            patch: None,
+            status: String::from("renamed"),
+            previous_filename: Some("foo/bar/baz/me.txt".into()),
         };
         let expected = format!("\nline one\nline two\nline three\n");
         change.reverse_apply(&b, &a).unwrap();

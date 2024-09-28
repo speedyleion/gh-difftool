@@ -72,7 +72,11 @@ impl Diff {
 
     fn create_temp_original(&self, change: &Change, new: impl AsRef<Path>) -> Result<PathBuf> {
         let dir = self.temp_dir.as_ref();
-        let file = dir.join(format!("{}_{}", "base", &change.filename));
+        let old_file_name = change
+            .previous_filename
+            .as_ref()
+            .unwrap_or(&change.filename);
+        let file = dir.join(format!("{}_{}", "base", old_file_name));
         fs::create_dir_all(
             file.parent()
                 .expect("Should always have a parent temp path"),
@@ -125,11 +129,42 @@ mod tests {
         let change = Change {
             filename: "ignore_me".to_string(),
             contents_url: "sure".to_string(),
-            patch: diff.to_string(),
+            patch: Some(diff.to_string()),
             status: "modified".to_string(),
+            previous_filename: None,
         };
         let diff = Diff::new(difftool(&temp)).unwrap();
         let original = diff.create_temp_original(&change, b).unwrap();
+        assert!(original.to_str().unwrap().ends_with(&change.filename));
+        assert_eq!(fs::read(&original).unwrap(), expected.into_bytes());
+    }
+
+    #[test]
+    fn create_temp_uses_previous_filename_when_present() {
+        let temp = TempDir::default().permanent();
+        let b = temp.join("b");
+        let new = dedent(
+            "
+            line one
+            line two
+            line three
+            ",
+        );
+        fs::write(&b, new).unwrap();
+        let expected = format!("{EOL}line one{EOL}line two{EOL}line three{EOL}");
+        let change = Change {
+            filename: "ignore_me".to_string(),
+            contents_url: "sure".to_string(),
+            patch: None,
+            status: "renamed".to_string(),
+            previous_filename: Some("other_name".to_string()),
+        };
+        let diff = Diff::new(difftool(&temp)).unwrap();
+        let original = diff.create_temp_original(&change, b).unwrap();
+        assert!(original
+            .to_str()
+            .unwrap()
+            .ends_with(&change.previous_filename.unwrap()));
         assert_eq!(fs::read(&original).unwrap(), expected.into_bytes());
     }
 
@@ -150,8 +185,9 @@ mod tests {
         let change = Change {
             filename: "foo/bar/fish.ext".to_string(),
             contents_url: server.url("/one.c"),
-            patch: "@@ -1,3 +1,3 @@\n doesn't matter".to_string(),
+            patch: Some("@@ -1,3 +1,3 @@\n doesn't matter".to_string()),
             status: "modified".to_string(),
+            previous_filename: None,
         };
         let diff = Diff::new(difftool(&temp)).unwrap();
         let new_file = diff.new_file_contents(&change).await.unwrap();
@@ -181,8 +217,9 @@ mod tests {
         let change = Change {
             filename: "foo/bar/fish.ext".to_string(),
             contents_url: server.url("/some_raw_url/path"),
-            patch: "@@ -1,3 +1,3 @@\n doesn't matter".to_string(),
+            patch: Some("@@ -1,3 +1,3 @@\n doesn't matter".to_string()),
             status: "modified".to_string(),
+            previous_filename: None,
         };
         let diff = Diff::new(difftool(&temp)).unwrap();
         let new_file = diff.new_file_contents(&change).await.unwrap();
