@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.1.1] - 2024-09-29
+
+### Fixed
+
+- Renamed files in a diff:
+  - Files that had no diffs and were only renamed would cause a panic
+  - Files that were renamed and had a diff were displayed with the new filename instead
+    of the previous one.
+
 ## [1.1.0] - 2024-01-06
 
 ### Added
@@ -165,7 +174,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Initial release
 
-[unreleased]: https://github.com/olivierlacan/keep-a-changelog/compare/v1.1.0...HEAD
+[unreleased]: https://github.com/speedyleion/gh-difftool/releases/tag/v1.1.1...HEAD
+[1.1.1]: https://github.com/speedyleion/gh-difftool/releases/tag/v1.1.1
 [1.1.0]: https://github.com/speedyleion/gh-difftool/releases/tag/v1.1.0
 [1.0.0]: https://github.com/speedyleion/gh-difftool/releases/tag/v1.0.0
 [0.1.15]: https://github.com/speedyleion/gh-difftool/releases/tag/v0.1.15
