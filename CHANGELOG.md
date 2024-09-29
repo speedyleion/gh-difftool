@@ -13,7 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Renamed files in a diff:
   - Files that had no diffs and were only renamed would cause a panic
-  - Files that were renamed and had a diff were displayed with the new filename instead 
+  - Files that were renamed and had a diff were displayed with the new filename instead
     of the previous one.
 
 ## [1.1.0] - 2024-01-06
