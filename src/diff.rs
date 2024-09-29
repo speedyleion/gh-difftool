@@ -150,8 +150,7 @@ mod tests {
             line three
             ",
         );
-        fs::write(&b, new).unwrap();
-        let expected = format!("{EOL}line one{EOL}line two{EOL}line three{EOL}");
+        fs::write(&b, &new).unwrap();
         let change = Change {
             filename: "ignore_me".to_string(),
             contents_url: "sure".to_string(),
@@ -165,7 +164,8 @@ mod tests {
             .to_str()
             .unwrap()
             .ends_with(&change.previous_filename.unwrap()));
-        assert_eq!(fs::read(&original).unwrap(), expected.into_bytes());
+        // A rename so the original should have the same contents
+        assert_eq!(fs::read(&original).unwrap(), new.into_bytes());
     }
 
     #[tokio::test]
