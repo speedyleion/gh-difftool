@@ -108,7 +108,7 @@ the `difftool.<tool>.path` git config option.
     path = /path/to/some/difftool
 ```
 
-### Tool Comamnd
+### Tool Command
 
 If your difftool of choice is not supported you can explicitly
 use the `difftool.<tool>.cmd` option.
