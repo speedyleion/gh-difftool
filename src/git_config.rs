@@ -15,10 +15,7 @@ use tokio::process::Command;
 // https://github.com/git/git/blob/master/git-mergetool--lib.sh
 // This will call into the various files in https://github.com/git/git/tree/master/mergetools
 // to build up the command and arguments.
-// In order to support all of the options that git provides we're going to *start* with just a few
-// tool options
-//
-
+// We're going to *start* with just a few tool options
 static DIFFTOOLS: Lazy<HashMap<&str, Vec<&str>>> = Lazy::new(|| {
     let mut m = HashMap::new();
     m.insert("bc", vec!["bcomp", "bcompare"]);
@@ -46,7 +43,7 @@ impl std::error::Error for Error {}
 #[derive(Debug, Eq, PartialEq, Default)]
 pub struct Difftool {
     tool: String,
-    program: String,
+    command_args: Vec<String>,
 }
 
 impl Difftool {
@@ -56,15 +53,34 @@ impl Difftool {
             None => get_config_difftool(&git_dir)?,
         };
 
-        let program = get_difftool_program(&git_dir, &tool)?;
+        let command_args = get_command_args(&git_dir, &tool)?;
 
-        Ok(Self { tool, program })
+        Ok(Self { tool, command_args })
     }
 
     pub async fn launch(&self, local: impl AsRef<OsStr>, remote: impl AsRef<OsStr>) -> Result<()> {
-        let mut command = Command::new(&self.program);
-        command.arg(local);
-        command.arg(remote);
+        let (program, args) = self
+            .command_args
+            .split_first()
+            .expect("No difftool command args set");
+        let mut command = Command::new(program);
+
+        // We set the environment variables in case the preferred difftool uses them directly
+        command.envs([("LOCAL", local.as_ref()), ("REMOTE", remote.as_ref())]);
+
+        for arg in args {
+            // We replace the environment variables with the local and remote
+            // paths because Command is not a shell so will not expand them
+            let arg = match arg.as_ref() {
+                "$LOCAL" => local.as_ref(),
+                "$REMOTE" => remote.as_ref(),
+                _ => {
+                    command.arg(arg);
+                    continue;
+                }
+            };
+            command.arg(arg);
+        }
 
         // In order to work with terminal diff tools like vimdiff we need to
         // spawn the process instead of using Command::output
@@ -75,6 +91,22 @@ impl Difftool {
         // only when there are no changes.  This prevents us from trusting the status
         Ok(())
     }
+}
+
+fn get_command_args(git_dir: &impl AsRef<Path>, name: impl AsRef<str>) -> Result<Vec<String>> {
+    let name = name.as_ref();
+    let config = git_config(git_dir)?;
+    let config_config = config.string_by("difftool", Some(name.into()), "cmd");
+    if let Some(cmd) = config_config {
+        return match shlex::split(&cmd.to_string()) {
+            Some(command_args) => Ok(command_args.iter().map(String::from).collect()),
+            None => Err(anyhow::anyhow!(format!(
+                "Failed to parse difftool cmd for difftool {name}"
+            ))),
+        };
+    }
+    let program = get_difftool_program(git_dir, name)?;
+    Ok(vec![program, "$LOCAL".into(), "$REMOTE".into()])
 }
 
 fn get_difftool_program(git_dir: impl AsRef<Path>, name: impl AsRef<str>) -> Result<String> {
@@ -297,8 +329,36 @@ mod tests {
             Difftool::new(&temp, Some(tool)).unwrap(),
             Difftool {
                 tool: tool.to_string(),
-                program: program.to_string()
+                command_args: vec![
+                    program.to_string(),
+                    "$LOCAL".to_string(),
+                    "$REMOTE".to_string()
+                ],
             }
+        );
+    }
+
+    #[test]
+    fn difftool_cmd_from_config() {
+        let temp = TempDir::default().permanent();
+        let git_dir = temp.join(".git");
+        let config_file = git_dir.join("config");
+        fs::create_dir_all(&git_dir).unwrap();
+        // Note that the "path" is ignored
+        fs::write(
+            &config_file,
+            "[difftool.makebelieve]\n    cmd = some/random/cmd $LOCAL --middle-arg $REMOTE\n    path = some/random/path",
+        )
+            .unwrap();
+
+        assert_eq!(
+            get_command_args(&temp, "makebelieve").unwrap(),
+            vec![
+                "some/random/cmd".to_string(),
+                "$LOCAL".into(),
+                "--middle-arg".into(),
+                "$REMOTE".into()
+            ]
         );
     }
 }
