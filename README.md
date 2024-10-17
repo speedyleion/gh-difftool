@@ -99,6 +99,7 @@ in the `PATH`.
 > config option. Exit codes are not trusted.
 
 ### Tool Path
+
 When the difftool is not in the `PATH`, it can be specified via
 the `difftool.<tool>.path` git config option.
 
@@ -117,17 +118,17 @@ use the `difftool.<tool>.cmd` option.
     cmd = /path/to/some/unsupported/difftool --extra-arg=foo $LOCAL $REMOTE
 ```
 
-The `$LOCAL` and `$REMOTE` variables will be replaced with the paths to the local and remote temporary files.
+The `$LOCAL` and `$REMOTE` variables will be replaced with the paths to the
+local and remote temporary files.
 
 Unlike the standard git difftool, the
-[`difftool.<tool>.cmd`](https://git-scm.com/docs/git-difftool#Documentation/git-difftool.txt-difftoollttoolgtcmd) used
-with `gh-difftool`
-will *not* be run in a shell. 
+[`difftool.<tool>.cmd`](https://git-scm.com/docs/git-difftool#Documentation/git-difftool.txt-difftoollttoolgtcmd)
+used with `gh-difftool` will *not* be run in a shell.
 
 This means:
 
 - Only the `$LOCAL` and `$REMOTE` variables will be replaced.
-- the `$LOCAL` and `$REMOTE` variables need to be space separated. 
+- the `$LOCAL` and `$REMOTE` variables need to be space separated.
   Use `--local $LOCAL`, not `--local=$LOCAL`.
 
 ## Requires
