@@ -95,6 +95,11 @@ There are a handful of known difftools available in `gh-difftool`, (bc, bc3,
 bc4, meld, gvimdiff). These known tools assume that the executable is available
 in the `PATH`.
 
+> Note: `gh-difftool` does *not* support the `difftool.trustExitCode` git
+> config option. Exit codes are not trusted.
+
+### Tool Path
+
 When the difftool is not in the `PATH`, it can be specified via
 the `difftool.<tool>.path` git config option.
 
@@ -103,40 +108,28 @@ the `difftool.<tool>.path` git config option.
     path = /path/to/some/difftool
 ```
 
-> Note: `gh-difftool` does *not* support the `difftool.<tool>.cmd` or
-> the `difftool.trustExitCode` git config options. Exit codes are not trusted.
+### Tool Command
 
-### Unsupported difftools
+If your difftool of choice is not supported you can explicitly
+use the `difftool.<tool>.cmd` option.
 
-Only a handful of difftools supported by git are natively supported
-by `gh-difftool`. If your difftool of choice is not supported you can explicitly
-set the `difftool.<tool>.path` git config option as a workaround.
-
-The difftool will be invoked as :
-
-```shell
-<tool> <base_version> <pr_version>
+```ini
+[difftool.sometool]
+    cmd = /path/to/some/unsupported/difftool --extra-arg=foo $LOCAL $REMOTE
 ```
 
-Where `<tool>` will be taken from `difftool.<tool>.path`. If this invocation
-format doesn't work with your tool of choice you'll want to wrap the tool in a
-launcher script or similar that matches this format. If the launcher script
-happens to not work for the git difftool then you can make a wrapper difftool
-that will be used only by `gh-difftool` and not by git.
+The `$LOCAL` and `$REMOTE` variables will be replaced with the paths to the
+local and remote temporary files.
 
-1. Set the environment variable `GH_DIFFTOOL` to the name of the wrapper
-   difftool, e.g. `set GH_DIFFTOOL=wrappertool`
-2. Configure the `path` git config option for the wrapper difftool (often
-   in `~/.gitconfig`)
+Unlike the standard git difftool, the
+[`difftool.<tool>.cmd`](https://git-scm.com/docs/git-difftool#Documentation/git-difftool.txt-difftoollttoolgtcmd)
+used with `gh-difftool` will *not* be run in a shell.
 
-    ```ini
-    [difftool.wrappertool]
-        path = /path/to/the/wrapper/script
-    ```
+This means:
 
-git will only use the `difftool.wrappertool.path` value if git is invoked
-with `wrappertool` as the git difftool. This will allow `gh-difftool` to
-work and not have a negative side effect on git.
+- Only the `$LOCAL` and `$REMOTE` variables will be replaced.
+- the `$LOCAL` and `$REMOTE` variables need to be space separated.
+  Use `--local $LOCAL`, not `--local=$LOCAL`.
 
 ## Requires
 
