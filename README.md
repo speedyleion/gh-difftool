@@ -119,7 +119,7 @@ use the `difftool.<tool>.cmd` option.
 
 The `$LOCAL` and `$REMOTE` variables will be replaced with the paths to the local and remote temporary files.
 
-Unlike normal the git difftool, the
+Unlike the standard git difftool, the
 [`difftool.<tool>.cmd`](https://git-scm.com/docs/git-difftool#Documentation/git-difftool.txt-difftoollttoolgtcmd) used
 with `gh-difftool`
 will *not* be run in a shell. 
