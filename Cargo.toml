@@ -1,13 +1,13 @@
 [package]
 name = "gh-difftool"
-version = "1.2.0"
+version = "1.2.1"
 edition = "2021"
 
 [dependencies]
 anyhow = "1"
 clap = { version = "4", features = ["derive", "env"] }
 displaydoc = "0.2"
-futures = { version = "0.3", default-features = false, features = ["alloc"]}
+futures = { version = "0.3", default-features = false, features = ["alloc"] }
 gix-config = "0.40"
 once_cell = "1"
 parse_link_header = "0.4"
