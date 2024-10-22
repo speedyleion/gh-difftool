@@ -19,6 +19,7 @@ pub struct Change {
     pub previous_filename: Option<String>,
     pub contents_url: String,
     /// Patches are *not* present for files that are only renamed
+    /// and large binary diffs
     pub patch: Option<String>,
     pub status: String,
 }
@@ -41,10 +42,13 @@ impl Change {
             fs::write(src, "")?;
             return Ok(());
         }
-        if self.status == "renamed" {
+
+        // Renamed files don't have a patch
+        let Some(patch) = self.patch.as_ref() else {
             fs::copy(&src, &dest)?;
             return Ok(());
-        }
+        };
+
         let mut cmd = Command::new("patch");
         cmd.args([
             "-R",
@@ -58,12 +62,7 @@ impl Change {
         let mut child = cmd.spawn()?;
         let mut stdin = child.stdin.take().expect("failed to get stdin for `patch`");
 
-        // Renamed files don't have a patch
-        let mut contents = self
-            .patch
-            .as_ref()
-            .expect("Expected a patch for the file")
-            .clone();
+        let mut contents = patch.clone();
 
         // Not sure how to force this in a minimum reproducible example.
         // When using patch and deleting things close to the end of the file it seems that missing
@@ -410,9 +409,9 @@ mod tests {
     }
 
     #[parameterized(
-    first = {"Cargo.toml", &["Cargo.toml", "yes/no/maybe.idk", "what/when/where.stuff"]},
-    middle = {"yes/no/maybe.idk", &["yes/no/maybe.idk", "what/when/where.stuff", "Cargo.toml"]},
-    last = {"what/when/where.stuff", &["what/when/where.stuff", "Cargo.toml", "yes/no/maybe.idk"]},
+        first = {"Cargo.toml", &["Cargo.toml", "yes/no/maybe.idk", "what/when/where.stuff"]},
+        middle = {"yes/no/maybe.idk", &["yes/no/maybe.idk", "what/when/where.stuff", "Cargo.toml"]},
+        last = {"what/when/where.stuff", &["what/when/where.stuff", "Cargo.toml", "yes/no/maybe.idk"]},
     )]
     fn rotate_to_files(file: &str, expected: &[&str]) {
         let changes =
@@ -547,7 +546,7 @@ mod tests {
     }
 
     #[test]
-    fn file_renamed() {
+    fn no_patch() {
         let temp = TempDir::default().permanent();
         let a = temp.join("a");
         let b = temp.join("b");

@@ -140,32 +140,33 @@ mod tests {
     }
 
     #[test]
-    fn create_temp_uses_previous_filename_when_present() {
+    fn renamed_diff() {
         let temp = TempDir::default().permanent();
         let b = temp.join("b");
         let new = dedent(
             "
             line one
-            line two
+            line changed
             line three
             ",
         );
-        fs::write(&b, &new).unwrap();
+        fs::write(&b, new).unwrap();
+        let diff = "@@ -1,3 +1,3 @@\n line one\n-line two\n+line changed\n line three";
+        let expected = format!("{EOL}line one{EOL}line two{EOL}line three{EOL}");
         let change = Change {
             filename: "ignore_me".to_string(),
             contents_url: "sure".to_string(),
-            patch: None,
+            patch: Some(diff.to_string()),
             status: "renamed".to_string(),
-            previous_filename: Some("other_name".to_string()),
+            previous_filename: Some("new_filename".to_string()),
         };
         let diff = Diff::new(difftool(&temp)).unwrap();
         let original = diff.create_temp_original(&change, b).unwrap();
         assert!(original
             .to_str()
             .unwrap()
-            .ends_with(&change.previous_filename.unwrap()));
-        // A rename so the original should have the same contents
-        assert_eq!(fs::read(&original).unwrap(), new.into_bytes());
+            .ends_with(change.previous_filename.as_ref().unwrap()));
+        assert_eq!(fs::read(&original).unwrap(), expected.into_bytes());
     }
 
     #[tokio::test]
