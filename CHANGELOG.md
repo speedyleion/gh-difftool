@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.2.1] - 2024-10-21
+
+### Fixed
+
+- Files that were renamed and had a diff showed no differences. This was introduced
+  in version 1.1.1.
+
 ## [1.2.0] - 2024-10-17
 
 ### Added
@@ -180,7 +187,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Initial release
 
-[unreleased]: https://github.com/speedyleion/gh-difftool/releases/tag/v1.2.0...HEAD
+[unreleased]: https://github.com/speedyleion/gh-difftool/releases/tag/v1.2.1...HEAD
+[1.2.1]: https://github.com/speedyleion/gh-difftool/releases/tag/v1.2.1
 [1.2.0]: https://github.com/speedyleion/gh-difftool/releases/tag/v1.2.0
 [1.1.1]: https://github.com/speedyleion/gh-difftool/releases/tag/v1.1.1
 [1.1.0]: https://github.com/speedyleion/gh-difftool/releases/tag/v1.1.0
