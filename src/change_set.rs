@@ -5,7 +5,7 @@
 
 //! Set of changes that goes from one version of files to another
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::io::{Error, ErrorKind, Write};
@@ -59,7 +59,9 @@ impl Change {
         cmd.stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
-        let mut child = cmd.spawn()?;
+        let mut child = cmd
+            .spawn()
+            .context("Failed to spawn `patch`, is it installed?")?;
         let mut stdin = child.stdin.take().expect("failed to get stdin for `patch`");
 
         let mut contents = patch.clone();
