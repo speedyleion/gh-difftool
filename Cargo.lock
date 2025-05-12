@@ -792,7 +792,7 @@ dependencies = [
 
 [[package]]
 name = "gh-difftool"
-version = "1.2.2"
+version = "1.2.3"
 dependencies = [
  "anyhow",
  "assert_cmd",
