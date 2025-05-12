@@ -132,6 +132,7 @@ mod tests {
             patch: Some(diff.to_string()),
             status: "modified".to_string(),
             previous_filename: None,
+            sha: "why not".to_string(),
         };
         let diff = Diff::new(difftool(&temp)).unwrap();
         let original = diff.create_temp_original(&change, b).unwrap();
@@ -159,6 +160,7 @@ mod tests {
             patch: Some(diff.to_string()),
             status: "renamed".to_string(),
             previous_filename: Some("new_filename".to_string()),
+            sha: "why not".to_string(),
         };
         let diff = Diff::new(difftool(&temp)).unwrap();
         let original = diff.create_temp_original(&change, b).unwrap();
@@ -180,7 +182,7 @@ mod tests {
             then.status(200)
                 .header("content-type", "text/html")
                 .body(format!(
-                    "{{\"content\":\"{encoded}\", \"encoding\":\"base64\"}}"
+                    "{{\"content\":\"{encoded}\", \"type\":\"file\", \"sha\": \"not used\"}}"
                 ));
         });
         let change = Change {
@@ -189,6 +191,7 @@ mod tests {
             patch: Some("@@ -1,3 +1,3 @@\n doesn't matter".to_string()),
             status: "modified".to_string(),
             previous_filename: None,
+            sha: "not used".to_string(),
         };
         let diff = Diff::new(difftool(&temp)).unwrap();
         let new_file = diff.new_file_contents(&change).await.unwrap();
@@ -211,7 +214,7 @@ mod tests {
             then.status(200)
                 .header("content-type", "text/html")
                 .body(format!(
-                    "{{\"content\":\"{encoded}\", \"encoding\":\"base64\"}}"
+                    "{{\"content\":\"{encoded}\", \"type\":\"file\", \"sha\": \"not used\"}}"
                 ));
         });
 
@@ -221,6 +224,7 @@ mod tests {
             patch: Some("@@ -1,3 +1,3 @@\n doesn't matter".to_string()),
             status: "modified".to_string(),
             previous_filename: None,
+            sha: "not used".to_string(),
         };
         let diff = Diff::new(difftool(&temp)).unwrap();
         let new_file = diff.new_file_contents(&change).await.unwrap();
