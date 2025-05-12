@@ -110,8 +110,6 @@ impl Change {
     // on the `Content` struct. This may warrant a refactor
     fn get_submodule_commit_sha(&self, patch: &str) -> Option<String> {
         const SUBMODULE_PATCH_PREFIX: &str = "@@ -1 +1 @@\n-Subproject commit ";
-        dbg!(SUBMODULE_PATCH_PREFIX);
-        dbg!(patch);
         let possible_sha = patch.strip_prefix(SUBMODULE_PATCH_PREFIX);
         match (possible_sha, patch.ends_with(&self.sha)) {
             (Some(sha), true) => Some(sha.split_once('\n').unwrap_or(("", "")).0.to_string()),
