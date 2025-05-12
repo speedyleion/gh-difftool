@@ -60,9 +60,10 @@ impl Display for Repo {
 
 #[derive(Default, PartialEq, Eq, Debug, Serialize, Deserialize)]
 struct Content {
-    content: String,
-    // Not using the encoding right now, guessing it will always be base64
-    encoding: String,
+    #[serde(rename = "type")]
+    type_: String,
+    sha: String,
+    content: Option<String>,
 }
 
 fn output_to_string(output: std::process::Output) -> Result<String> {
@@ -104,10 +105,14 @@ pub async fn file_contents(change: &Change) -> Result<String> {
 
     let content: Content = serde_json::from_str(output.as_str())?;
 
+    if content.type_ == "submodule" {
+        return Ok(content.sha);
+    }
+
     // Not sure why, but the base64 encoded contents from github has newlines
     // in it, removing these newlines still leaves the newlines that are encoded
     // into the base64 string so the diff will still be good.
-    let cleaned = content.content.replace('\n', "");
+    let cleaned = content.content.unwrap_or_default().replace('\n', "");
     let bytes = STANDARD.decode(cleaned)?;
     Ok(String::from_utf8(bytes)?)
 }
@@ -381,6 +386,7 @@ mod tests {
                     patch: Some("@@ -6,3 +6,7 @@ edition = \"2021\"\n [dev-dependencies]\n assert_cmd = \"2.0.4\"\n mockall = \"0.11.2\"\n+textwrap = \"0.15.1\"\n+\n+[dependencies]\n+patch = \"0.6.0\"".into()),
                     status: String::from("modified"),
                     previous_filename: None,
+                    sha: String::from("b0a3777df4afc764c34234524267970025d55467"),
                 }]
             }
         );
@@ -399,6 +405,7 @@ mod tests {
                         patch: Some("@@ -6,3 +6,7 @@ edition = \"2021\"\n [dev-dependencies]\n assert_cmd = \"2.0.4\"\n mockall = \"0.11.2\"\n+textwrap = \"0.15.1\"\n+\n+[dependencies]\n+patch = \"0.6.0\"".into()),
                         status: String::from("modified"),
                         previous_filename: None,
+                        sha: String::from("b0a3777df4afc764c34234524267970025d55467"),
                     },
                     Change {
                         filename: String::from("src/main.rs"),
@@ -406,6 +413,7 @@ mod tests {
                         patch: Some("@@ -1,4 +1,5 @@\n mod gh_interface;\n+mod patch;\n \n fn main() {\n     println!(\"Hello, world!\");".into()),
                         status: String::from("modified"),
                         previous_filename: None,
+                        sha: String::from("cb71da67691cdf5f595b4e64d4feaf0bdd7798f6"),
                     },
                 ]
             }
@@ -611,6 +619,27 @@ mod tests {
         }
     "#;
 
+    // The output of `gh api https://api.github.com/repos/deep-foundation/dev/contents/packages/deepcase?ref=81b77114b9b70a012c880dbf23aa48bb90a17501`
+    const SUBMODULE_CONTENTS: &str = r#"
+        {
+          "name": "deepcase",
+          "path": "packages/deepcase",
+          "sha": "7c8ba583177b9e14cb85346f52e7b5536935a051",
+          "size": 0,
+          "url": "https://api.github.com/repos/deep-foundation/dev/contents/packages/deepcase?ref=81b77114b9b70a012c880dbf23aa48bb90a17501",
+          "html_url": "https://github.com/deep-foundation/deepcase/tree/7c8ba583177b9e14cb85346f52e7b5536935a051",
+          "git_url": "https://api.github.com/repos/deep-foundation/deepcase/git/trees/7c8ba583177b9e14cb85346f52e7b5536935a051",
+          "download_url": null,
+          "type": "submodule",
+          "submodule_git_url": "https://github.com/deep-foundation/deepcase.git",
+          "_links": {
+            "self": "https://api.github.com/repos/deep-foundation/dev/contents/packages/deepcase?ref=81b77114b9b70a012c880dbf23aa48bb90a17501",
+            "git": "https://api.github.com/repos/deep-foundation/deepcase/git/trees/7c8ba583177b9e14cb85346f52e7b5536935a051",
+            "html": "https://github.com/deep-foundation/deepcase/tree/7c8ba583177b9e14cb85346f52e7b5536935a051"
+          }
+        }
+    "#;
+
     #[tokio::test]
     async fn contents_of_cargo_toml() {
         let server = MockServer::start();
@@ -671,5 +700,23 @@ mod tests {
             textwrap::dedent(expected).trim_start()
         );
         mock.assert();
+    }
+
+    #[tokio::test]
+    async fn contents_of_submodule() {
+        let server = MockServer::start();
+        let mock = server.mock(|when, then| {
+            when.method(GET).path("/deepcase/contents");
+            then.status(200)
+                .header("content-type", "text/html")
+                .body(SUBMODULE_CONTENTS);
+        });
+        let change = Change {
+            contents_url: server.url("/deepcase/contents"),
+            ..Default::default()
+        };
+        let result = file_contents(&change).await;
+        mock.assert();
+        assert_eq!(result.unwrap(), "7c8ba583177b9e14cb85346f52e7b5536935a051");
     }
 }

@@ -22,6 +22,8 @@ pub struct Change {
     /// and large binary diffs
     pub patch: Option<String>,
     pub status: String,
+    // The sha of the file
+    pub sha: String,
 }
 
 impl Change {
@@ -48,6 +50,12 @@ impl Change {
             fs::copy(&src, &dest)?;
             return Ok(());
         };
+
+        // Submodules diffs should only be the sha values
+        // this logic is reluctantly split between here and the `gh_interface` module
+        if let Some(sha) = self.get_submodule_commit_sha(patch) {
+            return Ok(fs::write(dest, sha)?);
+        }
 
         let mut cmd = Command::new("patch");
         cmd.args([
@@ -94,6 +102,20 @@ impl Change {
                     String::from_utf8_lossy(&output.stderr)
                 ),
             ))?
+        }
+    }
+
+    // Will parse the patch to see if it conforms to a submodule patch
+    // Unfortunately the true indicator if this is a submoudule is the `type`
+    // on the `Content` struct. This may warrant a refactor
+    fn get_submodule_commit_sha(&self, patch: &str) -> Option<String> {
+        const SUBMODULE_PATCH_PREFIX: &str = "@@ -1 +1 @@\n-Subproject commit ";
+        dbg!(SUBMODULE_PATCH_PREFIX);
+        dbg!(patch);
+        let possible_sha = patch.strip_prefix(SUBMODULE_PATCH_PREFIX);
+        match (possible_sha, patch.ends_with(&self.sha)) {
+            (Some(sha), true) => Some(sha.split_once('\n').unwrap_or(("", "")).0.to_string()),
+            _ => None,
         }
     }
 }
@@ -203,6 +225,7 @@ mod tests {
             .map(|f| Change {
                 filename: (*f).to_owned(),
                 contents_url: contents_url.to_owned(),
+                sha: "sha".into(),
                 patch: Some("patch".into()),
                 status: String::from("modified"),
                 previous_filename: None,
@@ -251,6 +274,7 @@ mod tests {
                     patch: Some("@@ -6,3 +6,7 @@ edition = \"2021\"\n [dev-dependencies]\n assert_cmd = \"2.0.4\"\n mockall = \"0.11.2\"\n+textwrap = \"0.15.1\"\n+\n+[dependencies]\n+patch = \"0.6.0\"".into()),
                     status: String::from("modified"),
                     previous_filename: None,
+                    sha: String::from("b0a3777df4afc764c34234524267970025d55467"),
                 }]
             }
         );
@@ -278,19 +302,22 @@ mod tests {
                 "filename": "Cargo.toml",
                 "contents_url": "stuff",
                 "patch": "more_stuff",
-                "status": "modified"
+                "status": "modified",
+                "sha": "sha1"
               },
               {
                 "filename": "yes/no/maybe.idk",
                 "contents_url": "sure",
                 "patch": "why not",
-                "status": "modified"
+                "status": "modified",
+                "sha": "sha2"
               },
               {
                 "filename": "what/when/where.stuff",
                 "contents_url": "idk",
                 "patch": "I guess",
-                "status": "modified"
+                "status": "modified",
+                "sha": "sha3"
               }
             ]
         "#;
@@ -305,6 +332,7 @@ mod tests {
                         patch: Some("more_stuff".into()),
                         status: String::from("modified"),
                         previous_filename: None,
+                        sha: String::from("sha1"),
                     },
                     Change {
                         filename: String::from("yes/no/maybe.idk"),
@@ -312,6 +340,7 @@ mod tests {
                         patch: Some("why not".into()),
                         status: String::from("modified"),
                         previous_filename: None,
+                        sha: String::from("sha2"),
                     },
                     Change {
                         filename: String::from("what/when/where.stuff"),
@@ -319,6 +348,7 @@ mod tests {
                         patch: Some("I guess".into()),
                         status: String::from("modified"),
                         previous_filename: None,
+                        sha: String::from("sha3"),
                     }
                 ]
             }
@@ -335,6 +365,7 @@ mod tests {
                     patch: Some("more_stuff".into()),
                     status: String::from("modified"),
                     previous_filename: None,
+                    sha: String::from("what is up"),
                 },
                 Change {
                     filename: String::from("yes/no/maybe.idk"),
@@ -342,6 +373,7 @@ mod tests {
                     patch: Some("why not".into()),
                     status: String::from("modified"),
                     previous_filename: None,
+                    sha: String::from("why not"),
                 },
                 Change {
                     filename: String::from("what/when/where.stuff"),
@@ -349,6 +381,7 @@ mod tests {
                     patch: Some("I guess".into()),
                     status: String::from("modified"),
                     previous_filename: None,
+                    sha: String::from("I guess"),
                 },
             ],
         };
@@ -365,6 +398,7 @@ mod tests {
                         patch: Some("more_stuff".into()),
                         status: String::from("modified"),
                         previous_filename: None,
+                        sha: String::from("what is up"),
                     },
                     Change {
                         filename: String::from("yes/no/maybe.idk"),
@@ -372,6 +406,7 @@ mod tests {
                         patch: Some("why not".into()),
                         status: String::from("modified"),
                         previous_filename: None,
+                        sha: String::from("why not"),
                     },
                 ]
             }
@@ -464,6 +499,7 @@ mod tests {
             patch: Some(diff.to_string()),
             status: String::from("modified"),
             previous_filename: None,
+            sha: "I guess".to_string(),
         };
         let expected = format!("{EOL}line one{EOL}line two{EOL}line three{EOL}");
         change.reverse_apply(&b, &a).unwrap();
@@ -490,6 +526,7 @@ mod tests {
             patch: Some(diff.to_string()),
             status: String::from("modified"),
             previous_filename: None,
+            sha: "I guess".to_string(),
         };
         let expected = format!("{EOL}line one{EOL}line three{EOL}");
         change.reverse_apply(&b, &a).unwrap();
@@ -511,6 +548,7 @@ mod tests {
             patch: Some(diff.to_string()),
             status: String::from("modified"),
             previous_filename: None,
+            sha: "I guess".to_string(),
         };
 
         let error = change.reverse_apply(&b, &a).unwrap_err();
@@ -540,6 +578,7 @@ mod tests {
             patch: Some(diff.to_string()),
             status: String::from("removed"),
             previous_filename: None,
+            sha: "I guess".to_string(),
         };
         let expected = format!("\nline one\nline two\nline three\n");
         change.reverse_apply(&b, &a).unwrap();
@@ -567,8 +606,31 @@ mod tests {
             patch: None,
             status: String::from("renamed"),
             previous_filename: Some("foo/bar/baz/me.txt".into()),
+            sha: "I guess".to_string(),
         };
         let expected = format!("\nline one\nline two\nline three\n");
+        change.reverse_apply(&b, &a).unwrap();
+        assert_eq!(fs::read(&a).unwrap(), expected.into_bytes());
+    }
+
+    #[test]
+    fn submodule() {
+        let temp = TempDir::default().permanent();
+        let a = temp.join("a");
+        let b = temp.join("b");
+        fs::write(&b, "").unwrap();
+
+        let diff = "@@ -1 +1 @@\n-Subproject commit 236682e946bc79ef30288013e144f9794a9f0ff1\n Subproject commit 7c8ba583177b9e14cb85346f52e7b5536935a051";
+
+        let change = Change {
+            filename: "a/submodule".to_string(),
+            contents_url: "idk".to_string(),
+            patch: Some(diff.to_string()),
+            status: String::from("modified"),
+            previous_filename: None,
+            sha: "7c8ba583177b9e14cb85346f52e7b5536935a051".to_string(),
+        };
+        let expected = "236682e946bc79ef30288013e144f9794a9f0ff1".to_string();
         change.reverse_apply(&b, &a).unwrap();
         assert_eq!(fs::read(&a).unwrap(), expected.into_bytes());
     }
