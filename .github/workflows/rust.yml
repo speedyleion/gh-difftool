@@ -74,6 +74,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: xt0rted/markdownlint-problem-matcher@v3
-      - uses: DavidAnson/markdownlint-cli2-action@v19
+      - uses: DavidAnson/markdownlint-cli2-action@v20
         with:
           globs: "**/*.md"
