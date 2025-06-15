@@ -290,7 +290,7 @@ mod tests {
             let stderr = stderr.as_bytes().to_vec();
             mock.expect_output().times(1).returning(move || {
                 Ok(Output {
-                    status: ExitStatus::from_raw(status.try_into().unwrap()),
+                    status: ExitStatus::from_raw(status),
                     stdout: stdout.clone(),
                     stderr: stderr.clone(),
                 })
