@@ -13,7 +13,7 @@ use base64::{Engine as _, engine::general_purpose::STANDARD};
 use serde::{Deserialize, Serialize};
 use std::ffi::{OsStr, OsString};
 use std::fmt::{Display, Formatter};
-use std::io::{Error, ErrorKind};
+use std::io::Error;
 use std::process::Stdio;
 use tokio::process::Command;
 
@@ -70,8 +70,7 @@ fn output_to_string(output: std::process::Output) -> Result<String> {
     if output.status.success() {
         Ok(String::from_utf8(output.stdout)?)
     } else {
-        Err(Error::new(
-            ErrorKind::Other,
+        Err(Error::other(
             String::from_utf8(output.stderr)?,
         ))?
     }
@@ -199,8 +198,7 @@ impl<C: Cmd> GhCli<C> {
         Ok((
             pages,
             serde_json::from_str(output.as_str().lines().last().ok_or_else(|| {
-                Error::new(
-                    ErrorKind::Other,
+                Error::other(
                     format!("Should have had multiple lines in {output}"),
                 )
             })?)?,

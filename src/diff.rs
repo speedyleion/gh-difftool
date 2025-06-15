@@ -94,7 +94,7 @@ mod tests {
     #[cfg(windows)]
     const EOL: &'static str = "\r\n";
     #[cfg(not(windows))]
-    const EOL: &'static str = "\n";
+    const EOL: &str = "\n";
 
     use base64::{Engine as _, engine::general_purpose::STANDARD};
     use httpmock::MockServer;
@@ -109,7 +109,7 @@ mod tests {
         let config = git_dir.join("config");
         fs::create_dir_all(&git_dir).unwrap();
         fs::write(&config, "[difftool.bc]\n    path = bcomp").unwrap();
-        git_config::Difftool::new(&dir, Some("bc")).unwrap()
+        git_config::Difftool::new(dir, Some("bc")).unwrap()
     }
 
     #[test]

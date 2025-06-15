@@ -8,7 +8,7 @@
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::io::{Error, ErrorKind, Write};
+use std::io::{Error, Write};
 use std::path::Path;
 use std::process::{Command, Stdio};
 
@@ -93,8 +93,7 @@ impl Change {
         if status.success() {
             Ok(())
         } else {
-            Err(Error::new(
-                ErrorKind::Other,
+            Err(Error::other(
                 format!(
                     "Failed to patch {:?} to {:?}: {}",
                     src.as_ref(),
@@ -183,8 +182,7 @@ impl ChangeSet {
             .iter()
             .position(|c| c.filename.as_str() == file)
             .ok_or_else(|| {
-                Error::new(
-                    ErrorKind::Other,
+                Error::other(
                     format!("No such path '{file}' in the diff."),
                 )
             })?)
@@ -211,7 +209,7 @@ mod tests {
     #[cfg(windows)]
     const EOL: &'static str = "\r\n";
     #[cfg(not(windows))]
-    const EOL: &'static str = "\n";
+    const EOL: &str = "\n";
 
     /// Convert `filenames` to a vector of ['Change']
     ///
@@ -578,7 +576,7 @@ mod tests {
             previous_filename: None,
             sha: "I guess".to_string(),
         };
-        let expected = format!("\nline one\nline two\nline three\n");
+        let expected = "\nline one\nline two\nline three\n".to_string();
         change.reverse_apply(&b, &a).unwrap();
         assert_eq!(fs::read(&a).unwrap(), expected.into_bytes());
         assert_eq!(fs::read(&b).unwrap(), "".as_bytes());
@@ -606,7 +604,7 @@ mod tests {
             previous_filename: Some("foo/bar/baz/me.txt".into()),
             sha: "I guess".to_string(),
         };
-        let expected = format!("\nline one\nline two\nline three\n");
+        let expected = "\nline one\nline two\nline three\n".to_string();
         change.reverse_apply(&b, &a).unwrap();
         assert_eq!(fs::read(&a).unwrap(), expected.into_bytes());
     }
