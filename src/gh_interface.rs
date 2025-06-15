@@ -5,11 +5,11 @@
 
 //! Module for interacting with the github command line
 
+use crate::Change;
 use crate::change_set::ChangeSet;
 use crate::cmd::Cmd;
-use crate::Change;
 use anyhow::Result;
-use base64::{engine::general_purpose::STANDARD, Engine as _};
+use base64::{Engine as _, engine::general_purpose::STANDARD};
 use serde::{Deserialize, Serialize};
 use std::ffi::{OsStr, OsString};
 use std::fmt::{Display, Formatter};
@@ -564,7 +564,11 @@ mod tests {
 
     #[test]
     fn failure_running_gh_repo_command() {
-        let mock = repo_mock(1, "", "none of the git remotes configured for this repository point to a known GitHub host. To tell gh about a new GitHub host, please use `gh auth login`");
+        let mock = repo_mock(
+            1,
+            "",
+            "none of the git remotes configured for this repository point to a known GitHub host. To tell gh about a new GitHub host, please use `gh auth login`",
+        );
         let mut gh = GhCli::new(mock);
         let error = gh.current_repo().unwrap_err();
         let root_cause = error.root_cause();

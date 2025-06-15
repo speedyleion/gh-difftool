@@ -5,9 +5,9 @@
 
 //! Launches a difftool to compare changes
 
+use crate::Change;
 use crate::gh_interface;
 use crate::git_config;
-use crate::Change;
 use anyhow::Result;
 use std::ffi::OsString;
 use std::fs;
@@ -96,9 +96,9 @@ mod tests {
     #[cfg(not(windows))]
     const EOL: &'static str = "\n";
 
-    use base64::{engine::general_purpose::STANDARD, Engine as _};
-    use httpmock::prelude::GET;
+    use base64::{Engine as _, engine::general_purpose::STANDARD};
     use httpmock::MockServer;
+    use httpmock::prelude::GET;
     use std::fs;
     use temp_testdir::TempDir;
     use textwrap::dedent;
@@ -164,10 +164,12 @@ mod tests {
         };
         let diff = Diff::new(difftool(&temp)).unwrap();
         let original = diff.create_temp_original(&change, b).unwrap();
-        assert!(original
-            .to_str()
-            .unwrap()
-            .ends_with(change.previous_filename.as_ref().unwrap()));
+        assert!(
+            original
+                .to_str()
+                .unwrap()
+                .ends_with(change.previous_filename.as_ref().unwrap())
+        );
         assert_eq!(fs::read(&original).unwrap(), expected.into_bytes());
     }
 
