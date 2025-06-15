@@ -93,14 +93,12 @@ impl Change {
         if status.success() {
             Ok(())
         } else {
-            Err(Error::other(
-                format!(
-                    "Failed to patch {:?} to {:?}: {}",
-                    src.as_ref(),
-                    dest.as_ref(),
-                    String::from_utf8_lossy(&output.stderr)
-                ),
-            ))?
+            Err(Error::other(format!(
+                "Failed to patch {:?} to {:?}: {}",
+                src.as_ref(),
+                dest.as_ref(),
+                String::from_utf8_lossy(&output.stderr)
+            )))?
         }
     }
 
@@ -181,11 +179,7 @@ impl ChangeSet {
             .changes
             .iter()
             .position(|c| c.filename.as_str() == file)
-            .ok_or_else(|| {
-                Error::other(
-                    format!("No such path '{file}' in the diff."),
-                )
-            })?)
+            .ok_or_else(|| Error::other(format!("No such path '{file}' in the diff.")))?)
     }
 }
 
