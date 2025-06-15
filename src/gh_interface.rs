@@ -5,15 +5,15 @@
 
 //! Module for interacting with the github command line
 
+use crate::Change;
 use crate::change_set::ChangeSet;
 use crate::cmd::Cmd;
-use crate::Change;
 use anyhow::Result;
-use base64::{engine::general_purpose::STANDARD, Engine as _};
+use base64::{Engine as _, engine::general_purpose::STANDARD};
 use serde::{Deserialize, Serialize};
 use std::ffi::{OsStr, OsString};
 use std::fmt::{Display, Formatter};
-use std::io::{Error, ErrorKind};
+use std::io::Error;
 use std::process::Stdio;
 use tokio::process::Command;
 
@@ -70,10 +70,7 @@ fn output_to_string(output: std::process::Output) -> Result<String> {
     if output.status.success() {
         Ok(String::from_utf8(output.stdout)?)
     } else {
-        Err(Error::new(
-            ErrorKind::Other,
-            String::from_utf8(output.stderr)?,
-        ))?
+        Err(Error::other(String::from_utf8(output.stderr)?))?
     }
 }
 
@@ -199,10 +196,7 @@ impl<C: Cmd> GhCli<C> {
         Ok((
             pages,
             serde_json::from_str(output.as_str().lines().last().ok_or_else(|| {
-                Error::new(
-                    ErrorKind::Other,
-                    format!("Should have had multiple lines in {output}"),
-                )
+                Error::other(format!("Should have had multiple lines in {output}"))
             })?)?,
         ))
     }
@@ -295,6 +289,9 @@ mod tests {
             let stdout = stdout.as_bytes().to_vec();
             let stderr = stderr.as_bytes().to_vec();
             mock.expect_output().times(1).returning(move || {
+                // Windows `from_raw()` takes a u32 so we *always* convert
+                // even though it's useless on *nix
+                #[allow(clippy::useless_conversion)]
                 Ok(Output {
                     status: ExitStatus::from_raw(status.try_into().unwrap()),
                     stdout: stdout.clone(),
@@ -564,7 +561,11 @@ mod tests {
 
     #[test]
     fn failure_running_gh_repo_command() {
-        let mock = repo_mock(1, "", "none of the git remotes configured for this repository point to a known GitHub host. To tell gh about a new GitHub host, please use `gh auth login`");
+        let mock = repo_mock(
+            1,
+            "",
+            "none of the git remotes configured for this repository point to a known GitHub host. To tell gh about a new GitHub host, please use `gh auth login`",
+        );
         let mut gh = GhCli::new(mock);
         let error = gh.current_repo().unwrap_err();
         let root_cause = error.root_cause();
