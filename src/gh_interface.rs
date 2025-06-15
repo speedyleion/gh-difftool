@@ -289,8 +289,11 @@ mod tests {
             let stdout = stdout.as_bytes().to_vec();
             let stderr = stderr.as_bytes().to_vec();
             mock.expect_output().times(1).returning(move || {
+                // Windows `from_raw()` takes a u32 so we *always* convert
+                // even though it's useless on *nix
+                #[allow(clippy::useless_conversion)]
                 Ok(Output {
-                    status: ExitStatus::from_raw(status),
+                    status: ExitStatus::from_raw(status.try_into().unwrap()),
                     stdout: stdout.clone(),
                     stderr: stderr.clone(),
                 })
