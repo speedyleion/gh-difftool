@@ -34,7 +34,7 @@ jobs:
       CARGO_BUILD_TARGET: ${{ matrix.cargo_build_target }}
       TARGET: ${{ matrix.target }}
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - uses: r7kamura/rust-problem-matchers@v1
     - name: Build
       shell: bash
@@ -54,7 +54,7 @@ jobs:
     env:
       GH_TOKEN: ${{ github.token }}
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - uses: r7kamura/rust-problem-matchers@v1
     - name: Run tests
       run: cargo test ${{ matrix.bins }}
@@ -62,7 +62,7 @@ jobs:
   rust-lint:
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v5
     - uses: r7kamura/rust-problem-matchers@v1
     - name: Run Format
       run: cargo fmt --all -- --check
@@ -72,7 +72,7 @@ jobs:
   markdown-lint:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: xt0rted/markdownlint-problem-matcher@v3
       - uses: DavidAnson/markdownlint-cli2-action@v20
         with:
