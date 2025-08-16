@@ -47,7 +47,7 @@ impl Diff {
         Ok(Self { difftool, temp_dir })
     }
 
-    pub async fn difftool(&self, change: Change) -> Result<Difftool> {
+    pub async fn difftool(&self, change: Change) -> Result<Difftool<'_>> {
         let new = self.new_file_contents(&change).await?;
         let original = self.create_temp_original(&change, &new)?;
         Ok(Difftool::new(
