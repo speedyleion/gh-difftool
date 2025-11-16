@@ -3,13 +3,13 @@
 //    (See accompanying file LICENSE or copy at
 //          https://www.boost.org/LICENSE_1_0.txt)
 
-use assert_cmd::Command;
+use assert_cmd::cargo;
 
 /// These tests require a network connection to github
 
 #[test]
 fn pr_10() {
-    let mut cmd = Command::cargo_bin("gh-difftool").unwrap();
+    let mut cmd = cargo::cargo_bin_cmd!("gh-difftool");
     let assert = cmd
         .arg("--name-only")
         .arg("10")
@@ -23,7 +23,7 @@ fn pr_10() {
 
 #[test]
 fn pr_4535_from_clap() {
-    let mut cmd = Command::cargo_bin("gh-difftool").unwrap();
+    let mut cmd = cargo::cargo_bin_cmd!("gh-difftool");
     let assert = cmd
         .arg("--name-only")
         .arg("4535")
@@ -95,7 +95,7 @@ fn pr_426_from_rust() {
         "src/test/run-pass/trivial-message.rs",
         "", // Needed for the trailing newline
     ];
-    let mut cmd = Command::cargo_bin("gh-difftool").unwrap();
+    let mut cmd = cargo::cargo_bin_cmd!("gh-difftool");
     cmd.arg("--name-only")
         .arg("426")
         .arg("--repo")
@@ -107,7 +107,7 @@ fn pr_426_from_rust() {
 
 #[test]
 fn pr_346_from_rust() {
-    let mut cmd = Command::cargo_bin("gh-difftool").unwrap();
+    let mut cmd = cargo::cargo_bin_cmd!("gh-difftool");
     let assert = cmd
         .arg("--name-only")
         .arg("346")
