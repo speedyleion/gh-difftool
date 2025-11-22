@@ -23,7 +23,7 @@ shlex = "1"
 [dev-dependencies]
 assert_cmd = "2"
 httpmock = "0.8"
-mockall = "0.13"
+mockall = "0.14"
 temp_testdir = "0.2"
 textwrap = "0.16"
 yare = "3"
