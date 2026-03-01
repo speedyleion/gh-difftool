@@ -9,6 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.2.3] - 2025-05-11
 
+### Changed
+
+- Dropped support for Android 5.x (Lollipop). The new minimum supported Android
+  version is 6.0 (Marshmallow).
+
 ### Fixed
 
 - Submodule diffs causing early exit with error
