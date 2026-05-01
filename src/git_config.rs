@@ -160,20 +160,48 @@ fn get_config_difftool(dir: impl AsRef<Path>) -> Result<String> {
 
 /// Find the git directory, `.git`, for the provided directory
 ///
-/// This will walk up from the provided `dir` looking for the `.git` directory.
-/// This does *not* properly handle `.git` files for worktrees and submodules
+/// This will walk up from the provided `dir` looking for the `.git` directory or file.
 ///
 /// # Returns:
-/// The full path to the `.git` directory if found. None if not found.
+/// The resolved `.git` directory if found.
 fn find_git_dir(dir: impl AsRef<Path>) -> Option<PathBuf> {
     let dir = dir.as_ref();
     for path in dir.ancestors() {
         let git = path.join(".git");
-        if git.exists() {
+        if git.is_dir() {
             return Some(git);
+        }
+        if git.is_file() {
+            return resolve_gitfile(&git);
         }
     }
     None
+}
+
+fn resolve_gitfile(gitfile: &Path) -> Option<PathBuf> {
+    let contents = std::fs::read_to_string(gitfile).ok()?;
+    let git_dir = contents
+        .lines()
+        .next()
+        .and_then(|line| line.strip_prefix("gitdir:"))
+        .map(str::trim)
+        .filter(|path| !path.is_empty())?;
+
+    let git_dir = PathBuf::from(git_dir);
+    if git_dir.is_absolute() {
+        Some(git_dir)
+    } else {
+        Some(
+            gitfile
+                .parent()
+                .expect("gitfile should always have a parent")
+                .join(git_dir),
+        )
+    }
+}
+
+fn find_git_dir_or_error(dir: impl AsRef<Path>) -> Result<PathBuf> {
+    find_git_dir(&dir).ok_or_else(|| Error::NotAGitRepository(PathBuf::from(dir.as_ref())).into())
 }
 
 /// Get the git config for the repo at `dir`
@@ -187,8 +215,7 @@ fn find_git_dir(dir: impl AsRef<Path>) -> Option<PathBuf> {
 /// # Error
 /// If `dir` is not for a git repository
 pub fn git_config(dir: impl AsRef<Path>) -> Result<File<'static>> {
-    let git_dir =
-        find_git_dir(&dir).ok_or_else(|| Error::NotAGitRepository(PathBuf::from(dir.as_ref())))?;
+    let git_dir = find_git_dir_or_error(&dir)?;
     Ok(File::from_git_dir(git_dir)?)
 }
 
@@ -237,6 +264,58 @@ mod tests {
             config.string_by("user", None, "name").unwrap().to_string(),
             "Me".to_string()
         );
+    }
+
+    #[test]
+    fn getting_git_config_from_submodule_gitfile() {
+        let temp = TempDir::default().permanent();
+        let submodule = temp.join("mod1");
+        let nested = submodule.join("src");
+        let git_dir = temp.join(".git").join("modules").join("mod1");
+        let config_file = git_dir.join("config");
+        fs::create_dir_all(&nested).unwrap();
+        fs::create_dir_all(&git_dir).unwrap();
+        fs::write(submodule.join(".git"), "gitdir: ../.git/modules/mod1\n").unwrap();
+        fs::write(&config_file, "[diff]\n    tool = meld\n").unwrap();
+
+        assert_eq!(
+            find_git_dir(&nested),
+            Some(submodule.join("../.git/modules/mod1"))
+        );
+        assert_eq!(get_config_difftool(nested).unwrap(), "meld".to_string());
+    }
+
+    #[test]
+    fn getting_git_config_from_worktree_gitfile() {
+        let temp = TempDir::default().permanent();
+        let worktree = temp.join("worktree");
+        let git_dir = temp
+            .join("main")
+            .join(".git")
+            .join("worktrees")
+            .join("worktree");
+        let config_file = git_dir.join("config");
+        fs::create_dir_all(&worktree).unwrap();
+        fs::create_dir_all(&git_dir).unwrap();
+        fs::write(
+            worktree.join(".git"),
+            format!("gitdir: {}\n", git_dir.display()),
+        )
+        .unwrap();
+        fs::write(&config_file, "[diff]\n    tool = meld\n").unwrap();
+
+        assert_eq!(find_git_dir(&worktree), Some(git_dir));
+        assert_eq!(get_config_difftool(worktree).unwrap(), "meld".to_string());
+    }
+
+    #[test]
+    fn malformed_gitfile_is_an_error() {
+        let temp = TempDir::default().permanent();
+        fs::write(temp.join(".git"), "not a gitdir file\n").unwrap();
+
+        let error = git_config(temp).unwrap_err();
+
+        assert!(error.to_string().contains("not a git repository"));
     }
 
     #[test]
