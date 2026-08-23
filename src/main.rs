@@ -4,7 +4,6 @@
 //          https://www.boost.org/LICENSE_1_0.txt)
 
 mod change_set;
-mod cmd;
 mod diff;
 mod gh_interface;
 mod git_config;
@@ -17,7 +16,6 @@ use clap::{ArgAction, Parser};
 use futures::StreamExt;
 use futures::stream::FuturesOrdered;
 use std::collections::VecDeque;
-use std::process::Command;
 use url::Url;
 
 #[derive(Parser)]
@@ -67,7 +65,7 @@ struct Cli {
 async fn main() -> Result<()> {
     let cli = Cli::parse();
 
-    let mut gh = gh_interface::GhCli::new(Command::new("gh"));
+    let mut gh = gh_interface::GhCli::new();
     let mut pr = match cli.pr {
         Some(pr) => pr,
         None => PullRequest::new_from_cwd()?,
@@ -199,7 +197,7 @@ impl std::error::Error for Error {}
 /// - by URL, e.g. "https://github.com/OWNER/REPO/pull/123"
 fn parse_pr(pr: &str) -> Result<PullRequest> {
     if let Ok(number) = pr.parse() {
-        let mut gh = gh_interface::GhCli::new(Command::new("gh"));
+        let mut gh = gh_interface::GhCli::new();
         let repo = gh.current_repo()?;
         return Ok(PullRequest { repo, number });
     }
