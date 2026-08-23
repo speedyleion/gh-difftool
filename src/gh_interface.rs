@@ -7,15 +7,14 @@
 
 use crate::Change;
 use crate::change_set::ChangeSet;
-use crate::cmd::Cmd;
 use anyhow::Result;
 use base64::{Engine as _, engine::general_purpose::STANDARD};
 use serde::{Deserialize, Serialize};
 use std::ffi::{OsStr, OsString};
 use std::fmt::{Display, Formatter};
-use std::io::Error;
-use std::process::Stdio;
-use tokio::process::Command;
+use std::io::{self, Error};
+use std::process::{Command, Output, Stdio};
+use tokio::process::Command as TokioCommand;
 
 #[derive(Clone, Default, PartialEq, Eq, Debug)]
 pub struct PullRequest {
@@ -29,7 +28,7 @@ pub struct PullRequest {
 
 impl PullRequest {
     pub fn new_from_cwd() -> Result<Self> {
-        let mut gh = GhCli::new(std::process::Command::new("gh"));
+        let mut gh = GhCli::new();
         let repo = gh.current_repo()?;
         let number = gh.current_pr()?;
         Ok(Self { repo, number })
@@ -79,7 +78,7 @@ where
     I: IntoIterator<Item = T>,
     T: AsRef<OsStr>,
 {
-    let mut command = Command::new("gh");
+    let mut command = TokioCommand::new("gh");
     for arg in args {
         command.arg(OsString::from(arg.as_ref()));
     }
@@ -114,14 +113,27 @@ pub async fn file_contents(change: &Change) -> Result<String> {
     Ok(String::from_utf8(bytes)?)
 }
 
-#[derive(Debug, Default)]
-pub struct GhCli<C> {
-    command: C,
+type ExecuteCommand = fn(&mut Command) -> io::Result<Output>;
+
+pub struct GhCli<F = ExecuteCommand> {
+    execute: F,
 }
 
-impl<C: Cmd> GhCli<C> {
-    pub fn new(command: C) -> Self {
-        Self { command }
+impl GhCli {
+    pub fn new() -> Self {
+        Self {
+            execute: Command::output,
+        }
+    }
+}
+
+impl<F> GhCli<F>
+where
+    F: FnMut(&mut Command) -> io::Result<Output>,
+{
+    #[cfg(test)]
+    fn with_executor(execute: F) -> Self {
+        Self { execute }
     }
 
     fn run_command<I, T>(&mut self, args: I) -> Result<String>
@@ -129,13 +141,13 @@ impl<C: Cmd> GhCli<C> {
         I: IntoIterator<Item = T>,
         T: AsRef<OsStr>,
     {
-        let mut command = self.command.new_from_self();
+        let mut command = Command::new("gh");
         for arg in args {
-            command.arg(OsString::from(arg.as_ref()));
+            command.arg(arg);
         }
         command.stdout(Stdio::piped());
         command.stderr(Stdio::piped());
-        let output = command.output()?;
+        let output = (self.execute)(&mut command)?;
         output_to_string(output)
     }
 
@@ -231,30 +243,41 @@ mod tests {
     use crate::change_set::{Change, ChangeSet};
     use httpmock::Method::GET;
     use httpmock::MockServer;
-    use mockall::mock;
-    use mockall::predicate::eq;
-    use std::ffi::OsString;
-    use std::io;
     #[cfg(unix)]
     use std::os::unix::prelude::ExitStatusExt;
     #[cfg(windows)]
     use std::os::windows::process::ExitStatusExt;
-    use std::process::Stdio;
     use std::process::{ExitStatus, Output};
 
-    mock! {
-        C {}
-        impl Cmd for C {
-            fn arg(&mut self, arg: OsString) -> &mut Self;
-            fn stdout(&mut self, cfg: Stdio) -> &mut Self;
-            fn stderr(&mut self, cfg: Stdio) -> &mut Self;
-            fn output(&mut self) -> io::Result<Output>;
-            fn new_from_self(&self) -> Self;
+    fn command_executor(
+        args: &[&str],
+        status: i32,
+        stdout: &str,
+        stderr: &str,
+    ) -> impl FnMut(&mut Command) -> io::Result<Output> + use<> {
+        let expected_args = args.iter().map(OsString::from).collect::<Vec<_>>();
+        let stdout = stdout.as_bytes().to_vec();
+        let stderr = stderr.as_bytes().to_vec();
+        move |command| {
+            assert_eq!(command.get_program(), "gh");
+            assert_eq!(command.get_args().collect::<Vec<_>>(), expected_args);
+            // Windows `from_raw()` takes a u32 so we *always* convert
+            // even though it's useless on *nix
+            #[allow(clippy::useless_conversion)]
+            Ok(Output {
+                status: ExitStatus::from_raw(status.try_into().unwrap()),
+                stdout: stdout.clone(),
+                stderr: stderr.clone(),
+            })
         }
     }
 
-    fn change_set_mock(status: i32, stdout: &str, stderr: &str) -> MockC {
-        mocked_command(
+    fn change_set_executor(
+        status: i32,
+        stdout: &str,
+        stderr: &str,
+    ) -> impl FnMut(&mut Command) -> io::Result<Output> + use<> {
+        command_executor(
             &[
                 "api",
                 "--method",
@@ -270,54 +293,24 @@ mod tests {
         )
     }
 
-    fn mocked_command(args: &[&str], status: i32, stdout: &str, stderr: &str) -> MockC {
-        let mut mock = MockC::new();
-        let stdout = stdout.to_string();
-        let stderr = stderr.to_string();
-        let args = args.iter().map(|s| String::from(*s)).collect::<Vec<_>>();
-        mock.expect_new_from_self().returning(move || {
-            let mut mock = MockC::new();
-            let args = args.clone();
-            for arg in args {
-                mock.expect_arg()
-                    .with(eq(OsString::from(&arg)))
-                    .times(1)
-                    .returning(|_| MockC::new());
-            }
-            mock.expect_stdout().times(1).returning(|_| MockC::new());
-            mock.expect_stderr().times(1).returning(|_| MockC::new());
-            let stdout = stdout.as_bytes().to_vec();
-            let stderr = stderr.as_bytes().to_vec();
-            mock.expect_output().times(1).returning(move || {
-                // Windows `from_raw()` takes a u32 so we *always* convert
-                // even though it's useless on *nix
-                #[allow(clippy::useless_conversion)]
-                Ok(Output {
-                    status: ExitStatus::from_raw(status.try_into().unwrap()),
-                    stdout: stdout.clone(),
-                    stderr: stderr.clone(),
-                })
-            });
-            mock
-        });
-        mock
+    fn pr_number_executor(
+        status: i32,
+        stdout: &str,
+        stderr: &str,
+    ) -> impl FnMut(&mut Command) -> io::Result<Output> + use<> {
+        command_executor(&["pr", "view", "--json", "number"], status, stdout, stderr)
     }
 
-    fn pr_number_mock(status: i32, stdout: impl AsRef<str>, stderr: impl AsRef<str>) -> MockC {
-        mocked_command(
-            &["pr", "view", "--json", "number"],
-            status,
-            stdout.as_ref(),
-            stderr.as_ref(),
-        )
-    }
-
-    fn repo_mock(status: i32, stdout: impl AsRef<str>, stderr: impl AsRef<str>) -> MockC {
-        mocked_command(
+    fn repo_executor(
+        status: i32,
+        stdout: &str,
+        stderr: &str,
+    ) -> impl FnMut(&mut Command) -> io::Result<Output> + use<> {
+        command_executor(
             &["repo", "view", "--json", "owner,name"],
             status,
-            stdout.as_ref(),
-            stderr.as_ref(),
+            stdout,
+            stderr,
         )
     }
 
@@ -373,8 +366,8 @@ mod tests {
 
     #[test]
     fn single_change_available() {
-        let mock = change_set_mock(0, &ONE_FILE.replace("\n", ""), "");
-        let mut gh = GhCli::new(mock);
+        let executor = change_set_executor(0, &ONE_FILE.replace("\n", ""), "");
+        let mut gh = GhCli::with_executor(executor);
         assert_eq!(gh.change_set(&PullRequest{ repo: "speedyleion/gh-difftool".to_string(), number: 10}).unwrap(),
             ChangeSet {
                 changes: vec![Change {
@@ -391,8 +384,8 @@ mod tests {
 
     #[test]
     fn change_set_available() {
-        let mock = change_set_mock(0, &TWO_FILES.replace("\n", ""), "");
-        let mut gh = GhCli::new(mock);
+        let executor = change_set_executor(0, &TWO_FILES.replace("\n", ""), "");
+        let mut gh = GhCli::with_executor(executor);
         assert_eq!(gh.change_set(&PullRequest{ repo: "speedyleion/gh-difftool".to_string(), number: 10}).unwrap(),
             ChangeSet {
                 changes: vec![
@@ -425,8 +418,9 @@ mod tests {
               "documentation_url": "https://docs.github.com/rest/reference/pulls#list-pull-requests-files"
             }
         "#;
-        let mock = change_set_mock(1, &expected.replace("\n", ""), "gh: Not Found (HTTP 404)");
-        let mut gh = GhCli::new(mock);
+        let executor =
+            change_set_executor(1, &expected.replace("\n", ""), "gh: Not Found (HTTP 404)");
+        let mut gh = GhCli::with_executor(executor);
         let error = gh
             .change_set(&PullRequest {
                 repo: "speedyleion/gh-difftool".to_string(),
@@ -442,8 +436,8 @@ mod tests {
         let bad_json = r#"
             [
         "#;
-        let mock = change_set_mock(0, &bad_json.replace("\n", ""), "");
-        let mut gh = GhCli::new(mock);
+        let executor = change_set_executor(0, &bad_json.replace("\n", ""), "");
+        let mut gh = GhCli::with_executor(executor);
         let error = gh
             .change_set(&PullRequest {
                 repo: "speedyleion/gh-difftool".to_string(),
@@ -464,8 +458,8 @@ mod tests {
                 "number": 10
             }
         "#;
-        let mock = pr_number_mock(0, pr_json, "");
-        let mut gh = GhCli::new(mock);
+        let executor = pr_number_executor(0, pr_json, "");
+        let mut gh = GhCli::with_executor(executor);
         assert_eq!(gh.current_pr().unwrap(), 10);
     }
 
@@ -476,8 +470,8 @@ mod tests {
                 "number": 8
             }
         "#;
-        let mock = pr_number_mock(0, pr_json, "");
-        let mut gh = GhCli::new(mock);
+        let executor = pr_number_executor(0, pr_json, "");
+        let mut gh = GhCli::with_executor(executor);
         assert_eq!(gh.current_pr().unwrap(), 8);
     }
 
@@ -486,8 +480,8 @@ mod tests {
         let pr_json = r#"
             {
         "#;
-        let mock = pr_number_mock(0, pr_json, "");
-        let mut gh = GhCli::new(mock);
+        let executor = pr_number_executor(0, pr_json, "");
+        let mut gh = GhCli::with_executor(executor);
         let error = gh.current_pr().unwrap_err();
         let root_cause = error.root_cause();
         assert_eq!(
@@ -498,8 +492,8 @@ mod tests {
 
     #[test]
     fn failure_running_gh_pr_command() {
-        let mock = pr_number_mock(1, "", "no pull requests found for branch \"what\"");
-        let mut gh = GhCli::new(mock);
+        let executor = pr_number_executor(1, "", "no pull requests found for branch \"what\"");
+        let mut gh = GhCli::with_executor(executor);
         let error = gh.current_pr().unwrap_err();
         let root_cause = error.root_cause();
         assert_eq!(
@@ -520,8 +514,8 @@ mod tests {
                 }
             }
         "#;
-        let mock = repo_mock(0, repo_json, "");
-        let mut gh = GhCli::new(mock);
+        let executor = repo_executor(0, repo_json, "");
+        let mut gh = GhCli::with_executor(executor);
         assert_eq!(
             gh.current_repo().unwrap(),
             String::from("speedyleion/gh-difftool")
@@ -539,8 +533,8 @@ mod tests {
                 }
             }
         "#;
-        let mock = repo_mock(0, repo_json, "");
-        let mut gh = GhCli::new(mock);
+        let executor = repo_executor(0, repo_json, "");
+        let mut gh = GhCli::with_executor(executor);
         assert_eq!(gh.current_repo().unwrap(), String::from("foo/bar"));
     }
 
@@ -549,8 +543,8 @@ mod tests {
         let bad_json = r#"
             {
         "#;
-        let mock = repo_mock(0, bad_json, "");
-        let mut gh = GhCli::new(mock);
+        let executor = repo_executor(0, bad_json, "");
+        let mut gh = GhCli::with_executor(executor);
         let error = gh.current_repo().unwrap_err();
         let root_cause = error.root_cause();
         assert_eq!(
@@ -561,12 +555,12 @@ mod tests {
 
     #[test]
     fn failure_running_gh_repo_command() {
-        let mock = repo_mock(
+        let executor = repo_executor(
             1,
             "",
             "none of the git remotes configured for this repository point to a known GitHub host. To tell gh about a new GitHub host, please use `gh auth login`",
         );
-        let mut gh = GhCli::new(mock);
+        let mut gh = GhCli::with_executor(executor);
         let error = gh.current_repo().unwrap_err();
         let root_cause = error.root_cause();
         assert_eq!(
