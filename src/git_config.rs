@@ -7,7 +7,7 @@ use anyhow::Result;
 use gix_config::File;
 use once_cell::sync::Lazy;
 use std::collections::HashMap;
-use std::ffi::OsStr;
+use std::ffi::{OsStr, OsString};
 use std::path::{Path, PathBuf};
 use tokio::process::Command;
 
@@ -65,13 +65,22 @@ impl Difftool {
             .expect("No difftool command args set");
         let mut command = Command::new(program);
 
+        let re = regex::Regex::new(r"^.+gh-difftool[^/]+/").unwrap();
+        let remote_lossy = remote.as_ref().to_string_lossy();
+        let merged = OsString::from(re.replace(remote_lossy.as_ref(), "").into_owned());
+
         // We set the environment variables in case the preferred difftool uses them directly
-        command.envs([("LOCAL", local.as_ref()), ("REMOTE", remote.as_ref())]);
+        command.envs([
+            ("LOCAL", local.as_ref()),
+            ("REMOTE", remote.as_ref()),
+            ("MERGED", merged.as_os_str()),
+        ]);
 
         for arg in args {
             // We replace the environment variables with the local and remote
             // paths because Command is not a shell so will not expand them
             let arg = match arg.as_ref() {
+                "$MERGED" => merged.as_os_str(),
                 "$LOCAL" => local.as_ref(),
                 "$REMOTE" => remote.as_ref(),
                 _ => {

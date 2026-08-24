@@ -536,6 +536,7 @@ dependencies = [
  "httpmock",
  "once_cell",
  "parse_link_header",
+ "regex",
  "serde",
  "serde_json",
  "shlex",
