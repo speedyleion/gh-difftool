@@ -373,6 +373,8 @@ mod tests {
                 changes: vec![Change {
                     filename: String::from("Cargo.toml"),
                     contents_url: String::from("https://api.github.com/repos/speedyleion/gh-difftool/contents/Cargo.toml?ref=befb7bf69c3c8ba97c714d57c8dadd9621021c84"),
+                    additions: 4,
+                    deletions: 0,
                     patch: Some("@@ -6,3 +6,7 @@ edition = \"2021\"\n [dev-dependencies]\n assert_cmd = \"2.0.4\"\n mockall = \"0.11.2\"\n+textwrap = \"0.15.1\"\n+\n+[dependencies]\n+patch = \"0.6.0\"".into()),
                     status: String::from("modified"),
                     previous_filename: None,
@@ -392,6 +394,8 @@ mod tests {
                     Change {
                         filename: String::from("Cargo.toml"),
                         contents_url: String::from("https://api.github.com/repos/speedyleion/gh-difftool/contents/Cargo.toml?ref=befb7bf69c3c8ba97c714d57c8dadd9621021c84"),
+                        additions: 4,
+                        deletions: 0,
                         patch: Some("@@ -6,3 +6,7 @@ edition = \"2021\"\n [dev-dependencies]\n assert_cmd = \"2.0.4\"\n mockall = \"0.11.2\"\n+textwrap = \"0.15.1\"\n+\n+[dependencies]\n+patch = \"0.6.0\"".into()),
                         status: String::from("modified"),
                         previous_filename: None,
@@ -400,6 +404,8 @@ mod tests {
                     Change {
                         filename: String::from("src/main.rs"),
                         contents_url: String::from("https://api.github.com/repos/speedyleion/gh-difftool/contents/src%2Fmain.rs?ref=befb7bf69c3c8ba97c714d57c8dadd9621021c84"),
+                        additions: 1,
+                        deletions: 0,
                         patch: Some("@@ -1,4 +1,5 @@\n mod gh_interface;\n+mod patch;\n \n fn main() {\n     println!(\"Hello, world!\");".into()),
                         status: String::from("modified"),
                         previous_filename: None,

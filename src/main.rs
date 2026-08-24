@@ -43,6 +43,10 @@ struct Cli {
     #[arg(long = "name-only")]
     name_only: bool,
 
+    /// Show only the number of changed files as well as number of added and deleted lines
+    #[arg(long = "shortstat", conflicts_with = "name_only")]
+    shortstat: bool,
+
     /// Start showing the diff for the given file, the files before it will move to end.
     ///
     /// Applied before `--skip-to`. This behavior deviates from `git-difftool` which
@@ -100,7 +104,12 @@ async fn main() -> Result<()> {
         return Ok(());
     }
 
-    // Important, do this after the name only check as name only doesn't need a difftool
+    if cli.shortstat {
+        report::shortstat(&change_set, std::io::stdout().lock())?;
+        return Ok(());
+    }
+
+    // Important, do this after the report checks as reports don't need a difftool
     let difftool = git_config::Difftool::new(std::env::current_dir()?, cli.tool.as_deref())?;
     diff(difftool, change_set).await?;
     Ok(())
@@ -217,7 +226,17 @@ fn parse_pr(pr: &str) -> Result<PullRequest> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use clap::error::ErrorKind;
     use yare::parameterized;
+
+    #[test]
+    fn name_only_and_shortstat_conflict() {
+        let error = Cli::try_parse_from(["gh-difftool", "--name-only", "--shortstat"])
+            .err()
+            .expect("output reports should conflict");
+
+        assert_eq!(error.kind(), ErrorKind::ArgumentConflict);
+    }
 
     #[parameterized(
     empty = {""},
