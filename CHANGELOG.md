@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.3.0] - 2024-10-17
+
+### Added
+
+- `--shortstat` flag which will output the number of files changed and the lines
+  added or removed in a pull request. This is similar to the
+  `git diff --shortstat` command.
+
 ## [1.2.3] - 2025-05-11
 
 ### Changed
@@ -204,7 +212,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Initial release
 
-[unreleased]: https://github.com/speedyleion/gh-difftool/releases/tag/v1.2.3...HEAD
+[unreleased]: https://github.com/speedyleion/gh-difftool/releases/tag/v1.3.0...HEAD
+[1.3.0]: https://github.com/speedyleion/gh-difftool/releases/tag/v1.3.0
 [1.2.3]: https://github.com/speedyleion/gh-difftool/releases/tag/v1.2.3
 [1.2.2]: https://github.com/speedyleion/gh-difftool/releases/tag/v1.2.2
 [1.2.1]: https://github.com/speedyleion/gh-difftool/releases/tag/v1.2.1
