@@ -12,10 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 
 - `--shortstat` flag which will output the number of files changed and the lines
-  added or removed in a pull request. This is similar to the 
+  added or removed in a pull request. This is similar to the
   `git diff --shortstat` command.
-
-- Add support for 
 
 ## [1.2.3] - 2025-05-11
 
