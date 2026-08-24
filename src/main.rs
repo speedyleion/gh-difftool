@@ -7,6 +7,7 @@ mod change_set;
 mod diff;
 mod gh_interface;
 mod git_config;
+mod report;
 
 use crate::change_set::{Change, ChangeSet};
 use crate::diff::{Diff, Difftool};
@@ -95,10 +96,7 @@ async fn main() -> Result<()> {
     }
 
     if cli.name_only {
-        for change in change_set.changes {
-            let filename = change.filename;
-            println!("{filename}");
-        }
+        report::name_only(&change_set, std::io::stdout().lock())?;
         return Ok(());
     }
 
