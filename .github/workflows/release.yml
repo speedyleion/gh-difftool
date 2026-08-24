@@ -34,7 +34,7 @@ jobs:
       CARGO_BUILD_TARGET: ${{ matrix.cargo_build_target }}
       TARGET: ${{ matrix.target }}
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
       - uses: cli/gh-extension-precompile@v2.2.0
         with: 
           build_script_override: "scripts/build_dist.sh"
