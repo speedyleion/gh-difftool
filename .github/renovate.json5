@@ -3,4 +3,11 @@
   extends: [
     'config:recommended',
   ],
+  internalChecksFilter: 'strict',
+  packageRules: [
+    {
+      matchDatasources: ['cargo'],
+      minimumReleaseAge: '14 days',
+    },
+  ],
 }
