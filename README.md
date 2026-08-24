@@ -35,6 +35,10 @@ Options:
       --name-only
           Show only the names of files that changed in a pull request
 
+      --shortstat
+          Show only the number of changed files as well as number of added and
+          deleted lines
+
       --rotate-to <ROTATE_TO>
           Start showing the diff for the given file, the files before it will move to end.
           

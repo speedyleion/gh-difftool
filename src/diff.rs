@@ -129,6 +129,8 @@ mod tests {
         let change = Change {
             filename: "ignore_me".to_string(),
             contents_url: "sure".to_string(),
+            additions: 0,
+            deletions: 0,
             patch: Some(diff.to_string()),
             status: "modified".to_string(),
             previous_filename: None,
@@ -157,6 +159,8 @@ mod tests {
         let change = Change {
             filename: "ignore_me".to_string(),
             contents_url: "sure".to_string(),
+            additions: 0,
+            deletions: 0,
             patch: Some(diff.to_string()),
             status: "renamed".to_string(),
             previous_filename: Some("new_filename".to_string()),
@@ -190,6 +194,8 @@ mod tests {
         let change = Change {
             filename: "foo/bar/fish.ext".to_string(),
             contents_url: server.url("/one.c"),
+            additions: 0,
+            deletions: 0,
             patch: Some("@@ -1,3 +1,3 @@\n doesn't matter".to_string()),
             status: "modified".to_string(),
             previous_filename: None,
@@ -223,6 +229,8 @@ mod tests {
         let change = Change {
             filename: "foo/bar/fish.ext".to_string(),
             contents_url: server.url("/some_raw_url/path"),
+            additions: 0,
+            deletions: 0,
             patch: Some("@@ -1,3 +1,3 @@\n doesn't matter".to_string()),
             status: "modified".to_string(),
             previous_filename: None,

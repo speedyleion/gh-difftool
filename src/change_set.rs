@@ -18,6 +18,8 @@ pub struct Change {
     /// The previous_filename will be present for renamed files
     pub previous_filename: Option<String>,
     pub contents_url: String,
+    pub additions: usize,
+    pub deletions: usize,
     /// Patches are *not* present for files that are only renamed
     /// and large binary diffs
     pub patch: Option<String>,
@@ -215,6 +217,8 @@ mod tests {
             .map(|f| Change {
                 filename: (*f).to_owned(),
                 contents_url: contents_url.to_owned(),
+                additions: 0,
+                deletions: 0,
                 sha: "sha".into(),
                 patch: Some("patch".into()),
                 status: String::from("modified"),
@@ -261,6 +265,8 @@ mod tests {
                 changes: vec![Change {
                     filename: String::from("Cargo.toml"),
                     contents_url: String::from("https://api.github.com/repos/speedyleion/gh-difftool/contents/Cargo.toml?ref=befb7bf69c3c8ba97c714d57c8dadd9621021c84"),
+                    additions: 4,
+                    deletions: 0,
                     patch: Some("@@ -6,3 +6,7 @@ edition = \"2021\"\n [dev-dependencies]\n assert_cmd = \"2.0.4\"\n mockall = \"0.11.2\"\n+textwrap = \"0.15.1\"\n+\n+[dependencies]\n+patch = \"0.6.0\"".into()),
                     status: String::from("modified"),
                     previous_filename: None,
@@ -291,6 +297,8 @@ mod tests {
               {
                 "filename": "Cargo.toml",
                 "contents_url": "stuff",
+                "additions": 0,
+                "deletions": 0,
                 "patch": "more_stuff",
                 "status": "modified",
                 "sha": "sha1"
@@ -298,6 +306,8 @@ mod tests {
               {
                 "filename": "yes/no/maybe.idk",
                 "contents_url": "sure",
+                "additions": 0,
+                "deletions": 0,
                 "patch": "why not",
                 "status": "modified",
                 "sha": "sha2"
@@ -305,6 +315,8 @@ mod tests {
               {
                 "filename": "what/when/where.stuff",
                 "contents_url": "idk",
+                "additions": 0,
+                "deletions": 0,
                 "patch": "I guess",
                 "status": "modified",
                 "sha": "sha3"
@@ -319,6 +331,8 @@ mod tests {
                     Change {
                         filename: String::from("Cargo.toml"),
                         contents_url: String::from("stuff"),
+                        additions: 0,
+                        deletions: 0,
                         patch: Some("more_stuff".into()),
                         status: String::from("modified"),
                         previous_filename: None,
@@ -327,6 +341,8 @@ mod tests {
                     Change {
                         filename: String::from("yes/no/maybe.idk"),
                         contents_url: String::from("sure"),
+                        additions: 0,
+                        deletions: 0,
                         patch: Some("why not".into()),
                         status: String::from("modified"),
                         previous_filename: None,
@@ -335,6 +351,8 @@ mod tests {
                     Change {
                         filename: String::from("what/when/where.stuff"),
                         contents_url: String::from("idk"),
+                        additions: 0,
+                        deletions: 0,
                         patch: Some("I guess".into()),
                         status: String::from("modified"),
                         previous_filename: None,
@@ -352,6 +370,8 @@ mod tests {
                 Change {
                     filename: String::from("Cargo.toml"),
                     contents_url: String::from("stuff"),
+                    additions: 0,
+                    deletions: 0,
                     patch: Some("more_stuff".into()),
                     status: String::from("modified"),
                     previous_filename: None,
@@ -360,6 +380,8 @@ mod tests {
                 Change {
                     filename: String::from("yes/no/maybe.idk"),
                     contents_url: String::from("sure"),
+                    additions: 0,
+                    deletions: 0,
                     patch: Some("why not".into()),
                     status: String::from("modified"),
                     previous_filename: None,
@@ -368,6 +390,8 @@ mod tests {
                 Change {
                     filename: String::from("what/when/where.stuff"),
                     contents_url: String::from("idk"),
+                    additions: 0,
+                    deletions: 0,
                     patch: Some("I guess".into()),
                     status: String::from("modified"),
                     previous_filename: None,
@@ -385,6 +409,8 @@ mod tests {
                     Change {
                         filename: String::from("Cargo.toml"),
                         contents_url: String::from("stuff"),
+                        additions: 0,
+                        deletions: 0,
                         patch: Some("more_stuff".into()),
                         status: String::from("modified"),
                         previous_filename: None,
@@ -393,6 +419,8 @@ mod tests {
                     Change {
                         filename: String::from("yes/no/maybe.idk"),
                         contents_url: String::from("sure"),
+                        additions: 0,
+                        deletions: 0,
                         patch: Some("why not".into()),
                         status: String::from("modified"),
                         previous_filename: None,
@@ -486,6 +514,8 @@ mod tests {
         let change = Change {
             filename: "what/when/where.stuff".to_string(),
             contents_url: "idk".to_string(),
+            additions: 0,
+            deletions: 0,
             patch: Some(diff.to_string()),
             status: String::from("modified"),
             previous_filename: None,
@@ -513,6 +543,8 @@ mod tests {
         let change = Change {
             filename: "what/when/where.stuff".to_string(),
             contents_url: "idk".to_string(),
+            additions: 0,
+            deletions: 0,
             patch: Some(diff.to_string()),
             status: String::from("modified"),
             previous_filename: None,
@@ -535,6 +567,8 @@ mod tests {
         let change = Change {
             filename: "what/when/where.stuff".to_string(),
             contents_url: "idk".to_string(),
+            additions: 0,
+            deletions: 0,
             patch: Some(diff.to_string()),
             status: String::from("modified"),
             previous_filename: None,
@@ -565,6 +599,8 @@ mod tests {
         let change = Change {
             filename: "what/when/where.stuff".to_string(),
             contents_url: "idk".to_string(),
+            additions: 0,
+            deletions: 0,
             patch: Some(diff.to_string()),
             status: String::from("removed"),
             previous_filename: None,
@@ -593,6 +629,8 @@ mod tests {
         let change = Change {
             filename: "what/when/where.stuff".to_string(),
             contents_url: "idk".to_string(),
+            additions: 0,
+            deletions: 0,
             patch: None,
             status: String::from("renamed"),
             previous_filename: Some("foo/bar/baz/me.txt".into()),
@@ -615,6 +653,8 @@ mod tests {
         let change = Change {
             filename: "a/submodule".to_string(),
             contents_url: "idk".to_string(),
+            additions: 0,
+            deletions: 0,
             patch: Some(diff.to_string()),
             status: String::from("modified"),
             previous_filename: None,
