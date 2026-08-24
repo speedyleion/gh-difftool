@@ -18,7 +18,7 @@ tokio = { version = "1", features = ["full"] }
 url = "2"
 which = "8"
 base64 = "0.23"
-shlex = "1"
+shlex = "2"
 
 [dev-dependencies]
 assert_cmd = "2"
