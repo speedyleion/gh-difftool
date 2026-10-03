@@ -180,7 +180,7 @@ fn find_git_dir(dir: impl AsRef<Path>) -> Option<PathBuf> {
 pub fn git_config(dir: impl AsRef<Path>) -> Result<File> {
     let git_dir =
         find_git_dir(&dir).ok_or_else(|| Error::NotAGitRepository(PathBuf::from(dir.as_ref())))?;
-    Ok(File::from_git_dir(git_dir)?)
+    Ok(File::from_git_dir(git_dir).map_err(|e| e.into_chain())?)
 }
 
 #[cfg(test)]
