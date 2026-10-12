@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The `patch` utility is no longer required. Patches are now reverse applied
   using the rust diffy crate.
 
+### Removed
+
+- Apple Intel x86_64 release builds
+
 ## [1.3.0] - 2024-10-17
 
 ### Added
