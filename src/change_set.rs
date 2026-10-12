@@ -6,11 +6,11 @@
 //! Set of changes that goes from one version of files to another
 
 use anyhow::{Context, Result};
+use diffy::{Patch, apply_bytes};
 use serde::{Deserialize, Serialize};
 use std::fs;
-use std::io::{Error, Write};
+use std::io::Error;
 use std::path::Path;
-use std::process::{Command, Stdio};
 
 #[derive(Default, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub struct Change {
@@ -59,49 +59,18 @@ impl Change {
             return Ok(fs::write(dest, sha)?);
         }
 
-        let mut cmd = Command::new("patch");
-        cmd.args([
-            "-R",
-            &src.as_ref().to_string_lossy(),
-            "-o",
-            &dest.as_ref().to_string_lossy(),
-        ]);
-        cmd.stdin(Stdio::piped())
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped());
-        let mut child = cmd
-            .spawn()
-            .context("Failed to spawn `patch`, is it installed?")?;
-        let mut stdin = child.stdin.take().expect("failed to get stdin for `patch`");
-
-        let mut contents = patch.clone();
-
-        // Not sure how to force this in a minimum reproducible example.
-        // When using patch and deleting things close to the end of the file it seems that missing
-        // a newline at the end of the patch will cause it to fail. Always Adding a newline to the
-        // end never seems to be an issue.
-        contents.push('\n');
-
-        // If one doesn't use a thread for writing stdin then it will block indefinitely
-        std::thread::spawn(move || {
-            stdin
-                .write_all(contents.as_bytes())
-                .expect("Failed to write to stdin");
-        });
-
-        let output = child.wait_with_output()?;
-
-        let status = output.status;
-        if status.success() {
-            Ok(())
-        } else {
-            Err(Error::other(format!(
-                "Failed to patch {:?} to {:?}: {}",
-                src.as_ref(),
-                dest.as_ref(),
-                String::from_utf8_lossy(&output.stderr)
-            )))?
+        // GitHub omits the newline after the last line of the patch, without it the last line
+        // wouldn't match the corresponding line in `src`.
+        let mut patch = patch.clone();
+        if !patch.ends_with('\n') {
+            patch.push('\n');
         }
+
+        let failure = || format!("Failed to patch {:?} to {:?}", src.as_ref(), dest.as_ref());
+        let patch = Patch::from_bytes(patch.as_bytes()).with_context(failure)?;
+        let new = fs::read(&src)?;
+        let original = apply_bytes(&new, &patch.reverse()).with_context(failure)?;
+        Ok(fs::write(&dest, original)?)
     }
 
     // Will parse the patch to see if it conforms to a submodule patch
@@ -201,11 +170,6 @@ mod tests {
     use temp_testdir::TempDir;
     use textwrap::dedent;
     use yare::parameterized;
-
-    #[cfg(windows)]
-    const EOL: &'static str = "\r\n";
-    #[cfg(not(windows))]
-    const EOL: &str = "\n";
 
     /// Convert `filenames` to a vector of ['Change']
     ///
@@ -521,7 +485,7 @@ mod tests {
             previous_filename: None,
             sha: "I guess".to_string(),
         };
-        let expected = format!("{EOL}line one{EOL}line two{EOL}line three{EOL}");
+        let expected = "\nline one\nline two\nline three\n".to_string();
         change.reverse_apply(&b, &a).unwrap();
         assert_eq!(fs::read(&a).unwrap(), expected.into_bytes());
     }
@@ -550,7 +514,7 @@ mod tests {
             previous_filename: None,
             sha: "I guess".to_string(),
         };
-        let expected = format!("{EOL}line one{EOL}line three{EOL}");
+        let expected = "\nline one\nline three\n".to_string();
         change.reverse_apply(&b, &a).unwrap();
         assert_eq!(fs::read(&a).unwrap(), expected.into_bytes());
     }
@@ -562,8 +526,7 @@ mod tests {
         let b = temp.join("b");
         let newest = "\n";
         fs::write(&b, newest).unwrap();
-        let diff = "@@ -1,3 +1,3 @@\n line one\n+line changed\n line three";
-        let message_start = format!("Failed to patch {:?} to {:?}: patch: **** malformed", b, a);
+        let diff = "@@ -1,3 +1,3 @@\n line one\n-line two\n+line changed\n line three";
         let change = Change {
             filename: "what/when/where.stuff".to_string(),
             contents_url: "idk".to_string(),
@@ -576,9 +539,80 @@ mod tests {
         };
 
         let error = change.reverse_apply(&b, &a).unwrap_err();
-        let root_cause = error.root_cause();
-        let message = format!("{}", root_cause);
-        assert!(message.starts_with(&message_start));
+        let expected = format!("Failed to patch {:?} to {:?}: error applying hunk #1", b, a);
+        assert_eq!(format!("{error:#}"), expected);
+    }
+
+    #[test]
+    fn malformed_patch() {
+        let temp = TempDir::default().permanent();
+        let a = temp.join("a");
+        let b = temp.join("b");
+        fs::write(&b, "line one\nline three\n").unwrap();
+        // Hunk header claims 3 original lines, but only 2 are present
+        let diff = "@@ -1,3 +1,3 @@\n line one\n+line changed\n line three";
+        let change = Change {
+            filename: "what/when/where.stuff".to_string(),
+            contents_url: "idk".to_string(),
+            additions: 0,
+            deletions: 0,
+            patch: Some(diff.to_string()),
+            status: String::from("modified"),
+            previous_filename: None,
+            sha: "I guess".to_string(),
+        };
+
+        let error = change.reverse_apply(&b, &a).unwrap_err();
+        let message_start = format!("Failed to patch {:?} to {:?}: error parsing patch", b, a);
+        assert!(format!("{error:#}").starts_with(&message_start));
+        assert!(!a.exists());
+    }
+
+    #[test]
+    fn no_newline_at_end_of_file() {
+        let temp = TempDir::default().permanent();
+        let a = temp.join("a");
+        let b = temp.join("b");
+        // The newline was removed from the last line, and a line without a newline was added
+        fs::write(&b, "line one\nline changed\nline three").unwrap();
+        let diff = "@@ -1,3 +1,3 @@\n line one\n-line two\n-line three\n+line changed\n+line three\n\\ No newline at end of file";
+        let change = Change {
+            filename: "what/when/where.stuff".to_string(),
+            contents_url: "idk".to_string(),
+            additions: 0,
+            deletions: 0,
+            patch: Some(diff.to_string()),
+            status: String::from("modified"),
+            previous_filename: None,
+            sha: "I guess".to_string(),
+        };
+        change.reverse_apply(&b, &a).unwrap();
+        assert_eq!(fs::read(&a).unwrap(), b"line one\nline two\nline three\n");
+    }
+
+    #[test]
+    fn non_utf8_contents() {
+        let temp = TempDir::default().permanent();
+        let a = temp.join("a");
+        let b = temp.join("b");
+        // Latin-1 encoded "café" on a line outside of the hunk
+        fs::write(&b, b"caf\xe9\none\ntwo\nthree\nline changed\n").unwrap();
+        let diff = "@@ -5 +5 @@\n-line two\n+line changed";
+        let change = Change {
+            filename: "what/when/where.stuff".to_string(),
+            contents_url: "idk".to_string(),
+            additions: 0,
+            deletions: 0,
+            patch: Some(diff.to_string()),
+            status: String::from("modified"),
+            previous_filename: None,
+            sha: "I guess".to_string(),
+        };
+        change.reverse_apply(&b, &a).unwrap();
+        assert_eq!(
+            fs::read(&a).unwrap(),
+            b"caf\xe9\none\ntwo\nthree\nline two\n"
+        );
     }
 
     #[test]

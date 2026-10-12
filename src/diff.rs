@@ -91,11 +91,6 @@ impl Diff {
 mod tests {
     use super::*;
 
-    #[cfg(windows)]
-    const EOL: &'static str = "\r\n";
-    #[cfg(not(windows))]
-    const EOL: &str = "\n";
-
     use base64::{Engine as _, engine::general_purpose::STANDARD};
     use httpmock::MockServer;
     use httpmock::prelude::GET;
@@ -125,7 +120,7 @@ mod tests {
         );
         fs::write(&b, new).unwrap();
         let diff = "@@ -1,3 +1,3 @@\n line one\n-line two\n+line changed\n line three";
-        let expected = format!("{EOL}line one{EOL}line two{EOL}line three{EOL}");
+        let expected = "\nline one\nline two\nline three\n".to_string();
         let change = Change {
             filename: "ignore_me".to_string(),
             contents_url: "sure".to_string(),
@@ -155,7 +150,7 @@ mod tests {
         );
         fs::write(&b, new).unwrap();
         let diff = "@@ -1,3 +1,3 @@\n line one\n-line two\n+line changed\n line three";
-        let expected = format!("{EOL}line one{EOL}line two{EOL}line three{EOL}");
+        let expected = "\nline one\nline two\nline three\n".to_string();
         let change = Change {
             filename: "ignore_me".to_string(),
             contents_url: "sure".to_string(),
