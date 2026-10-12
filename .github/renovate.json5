@@ -3,10 +3,9 @@
   extends: [
     'config:recommended',
   ],
-  internalChecksFilter: 'strict',
   packageRules: [
     {
-      matchDatasources: ['cargo'],
+      matchManagers: ['cargo'],
       minimumReleaseAge: '14 days',
     },
   ],
