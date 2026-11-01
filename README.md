@@ -2,9 +2,16 @@
 
 A difftool extension to the GitHub CLI, [gh](https://cli.github.com/).
 
-Launches a difftool to show the differences of a pull request. The files
-will be created in a temporary directory with the base branch version of the
-files prefixed with `base_`.
+Launches a difftool to show the differences of a pull request. The base branch
+version of the files will be created in a temporary directory, prefixed with
+`base_`.
+
+When no pull request is given, the pull request for the current branch is used
+and the base files are diffed against the local files in the working tree. Any
+edits made in the difftool will be kept.
+
+When a pull request is given, the base files are diffed against temporary
+versions of the pull request files.
 
 ```shell
 Usage: gh-difftool [OPTIONS] [PR] [-- <FILES>...]
@@ -12,21 +19,22 @@ Usage: gh-difftool [OPTIONS] [PR] [-- <FILES>...]
 Arguments:
   [PR]
           The pull request to diff
-          
-          When omitted the pull request associated with the current branch will be used
+
+          When omitted the pull request associated with the current branch will be used,
+          and the base is diffed against the local files.
           A pull request can be supplied as argument in any of the following formats:
           - by number, e.g. "123"
           - by URL, e.g. "https://github.com/OWNER/REPO/pull/123"
 
   [FILES]...
           Specific files to diff.
-          
+
           When not provided all of the files that changed in the pull request will be diffed
 
 Options:
   -t, --tool <TOOL>
           The tool to use for diffing
-          
+
           [env: GH_DIFFTOOL=]
 
   -R, --repo <OWNER/REPO>
@@ -36,12 +44,11 @@ Options:
           Show only the names of files that changed in a pull request
 
       --shortstat
-          Show only the number of changed files as well as number of added and
-          deleted lines
+          Show only the number of changed files as well as number of added and deleted lines
 
       --rotate-to <ROTATE_TO>
           Start showing the diff for the given file, the files before it will move to end.
-          
+
           Applied before `--skip-to`. This behavior deviates from `git-difftool` which
           seems to ignore rotation when `--skip-to` is present.
 
@@ -49,10 +56,10 @@ Options:
           Start showing the diff for the given file, skipping all the files before it
 
   -h, --help
-          Print help information (use `-h` for a summary)
+          Print help (see a summary with '-h')
 
   -V, --version
-          Print version information
+          Print version
 ```
 
 With no args, the tool will try to diff the current branch's pull request.
@@ -123,7 +130,7 @@ use the `difftool.<tool>.cmd` option.
 ```
 
 The `$LOCAL` and `$REMOTE` variables will be replaced with the paths to the
-local and remote temporary files.
+base and pull request versions of the files.
 
 Unlike the standard git difftool, the
 [`difftool.<tool>.cmd`](https://git-scm.com/docs/git-difftool#Documentation/git-difftool.txt-difftoollttoolgtcmd)

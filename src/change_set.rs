@@ -34,23 +34,14 @@ impl Change {
         P1: AsRef<Path>,
         P2: AsRef<Path>,
     {
-        // This is not an ideal implementation, but it works for now.
-        // When the file is removed (deleted) the Github API provides a `contents_url` which points to
-        // the old version of the file, not an empty version. This makes sense as an empty file is
-        // different than a file that doesn't exist. The problem comes in that the consumers of
-        // [`Change`] happen to create the original and new files instead of letting [`Change`] do
-        // it. Because of this lack of encapsulation, [`Change`] will swap out the new version for
-        // the old version and write an empty new version
-        if self.status == "removed" {
-            fs::copy(&src, &dest)?;
-            fs::write(src, "")?;
-            return Ok(());
-        }
-
-        // Renamed files don't have a patch
-        let Some(patch) = self.patch.as_ref() else {
-            fs::copy(&src, &dest)?;
-            return Ok(());
+        let patch = match self.patch.as_ref() {
+            Some(patch) if self.status != "removed" => patch,
+            // For removed files the GitHub API's `contents_url` points to the old version of the
+            // file, so `src` is already the original. Renamed files don't have a patch.
+            _ => {
+                fs::copy(&src, &dest)?;
+                return Ok(());
+            }
         };
 
         // Submodules diffs should only be the sha values
@@ -643,7 +634,6 @@ mod tests {
         let expected = "\nline one\nline two\nline three\n".to_string();
         change.reverse_apply(&b, &a).unwrap();
         assert_eq!(fs::read(&a).unwrap(), expected.into_bytes());
-        assert_eq!(fs::read(&b).unwrap(), "".as_bytes());
     }
 
     #[test]

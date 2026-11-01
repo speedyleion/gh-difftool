@@ -32,7 +32,8 @@ struct Cli {
 
     /// The pull request to diff
     ///
-    /// When omitted the pull request associated with the current branch will be used
+    /// When omitted the pull request associated with the current branch will be used,
+    /// and the base is diffed against the local files.
     /// A pull request can be supplied as argument in any of the following formats:
     /// - by number, e.g. "123"
     /// - by URL, e.g. "https://github.com/OWNER/REPO/pull/123"
@@ -71,9 +72,14 @@ async fn main() -> Result<()> {
     let cli = Cli::parse();
 
     let mut gh = gh_interface::GhCli::new();
-    let mut pr = match cli.pr {
-        Some(pr) => pr,
-        None => PullRequest::new_from_cwd()?,
+    // Without an explicit PR, the PR is the one for the checked-out branch, so the new files come
+    // from the working tree
+    let (mut pr, local_root) = match cli.pr {
+        Some(pr) => (pr, None),
+        None => (
+            PullRequest::new_from_cwd()?,
+            Some(git_config::repo_root(std::env::current_dir()?)?),
+        ),
     };
 
     if let Some(repo) = cli.repo {
@@ -111,7 +117,7 @@ async fn main() -> Result<()> {
 
     // Important, do this after the report checks as reports don't need a difftool
     let difftool = git_config::Difftool::new(std::env::current_dir()?, cli.tool.as_deref())?;
-    diff(difftool, change_set).await?;
+    diff(Diff::new(difftool, local_root)?, change_set).await?;
     Ok(())
 }
 
@@ -131,7 +137,7 @@ async fn launch_difftool(difftool: Option<Difftool<'_>>) -> Result<()> {
 /// of the changes will be executed in the same order as the changes.
 ///
 /// # Arguments
-/// * `difftool` - The command name of the difftool to use
+/// * `diff` - Creates the files for, and launches, the difftool for each change
 /// * `change_set` - The changes to run the difftool on
 ///
 /// # Implementation Details
@@ -143,8 +149,7 @@ async fn launch_difftool(difftool: Option<Difftool<'_>>) -> Result<()> {
 /// The reason for the 2 queues is to prevent launching multiple difftool instances. We only want
 /// one instance up at a time until the user dismisses it. While the difftool is up and has not
 /// been dismissed, the downloading and creation of temporary diff files will proceed.
-async fn diff(difftool: git_config::Difftool, change_set: ChangeSet) -> Result<()> {
-    let diff = Diff::new(difftool)?;
+async fn diff(diff: Diff, change_set: ChangeSet) -> Result<()> {
     {
         let mut stream = FuturesOrdered::new();
         for change in change_set.changes {
