@@ -167,6 +167,19 @@ fn find_git_dir(dir: impl AsRef<Path>) -> Option<PathBuf> {
     None
 }
 
+/// Get the root of the working tree for the repo at `dir`
+///
+/// # Error
+/// If `dir` is not for a git repository
+pub fn repo_root(dir: impl AsRef<Path>) -> Result<PathBuf> {
+    let git_dir =
+        find_git_dir(&dir).ok_or_else(|| Error::NotAGitRepository(PathBuf::from(dir.as_ref())))?;
+    Ok(git_dir
+        .parent()
+        .expect("`.git` should always have a parent")
+        .to_path_buf())
+}
+
 /// Get the git config for the repo at `dir`
 ///
 /// # Arguments
@@ -190,6 +203,15 @@ mod tests {
     use std::fs;
     use temp_testdir::TempDir;
     use yare::parameterized;
+
+    #[test]
+    fn repo_root_from_sub_dir() {
+        let root = TempDir::default();
+        let sub_dir = root.join("some/sub/dir");
+        fs::create_dir_all(root.join(".git")).unwrap();
+        fs::create_dir_all(&sub_dir).unwrap();
+        assert_eq!(repo_root(sub_dir).unwrap(), root.to_path_buf());
+    }
 
     #[test]
     fn found_git_dir_in_current_dir() {

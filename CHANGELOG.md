@@ -9,6 +9,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
+- **Breaking:** When no pull request is specified, the base is diffed against the
+  local files instead of temporary copies.
+- **Breaking:** `/dev/null` (`NUL` on Windows) is used instead of empty temporary
+  files. This matches `git difftool` behavior.
 - The `patch` utility is no longer required. Patches are now reverse applied
   using the rust diffy crate.
 
