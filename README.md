@@ -10,7 +10,7 @@ When no pull request is given, the pull request for the current branch is used
 and the base files are diffed against the local files in the working tree. Any
 edits made in the difftool will be kept.
 
-When a pull request is given, the base files are diffed against temporary 
+When a pull request is given, the base files are diffed against temporary
 versions of the pull request files.
 
 ```shell

@@ -11,6 +11,7 @@ use crate::git_config;
 use anyhow::Result;
 use std::ffi::OsString;
 use std::fs;
+use std::io;
 use std::path::{Path, PathBuf};
 use tempfile::{Builder, TempDir};
 
@@ -71,10 +72,18 @@ impl Diff {
             .as_ref()
             .map(|root| root.join(&change.filename));
         let remote = match local {
-            Some(local) if local.is_file() => local,
-            Some(local) if !local.exists() => PathBuf::from(NULL_DEVICE),
-            // Submodules are directories locally, so they keep the temporary file of the commit sha
-            Some(_) => new,
+            Some(local) => match fs::symlink_metadata(&local) {
+                Ok(meta) if meta.is_symlink() => {
+                    // Like git, show a symlink as the path it points to rather than following it
+                    fs::write(&new, fs::read_link(&local)?.as_os_str().as_encoded_bytes())?;
+                    new
+                }
+                Ok(meta) if meta.is_file() => local,
+                // Submodules are directories locally, so they keep the temporary file of the commit sha
+                Ok(_) => new,
+                Err(e) if e.kind() == io::ErrorKind::NotFound => PathBuf::from(NULL_DEVICE),
+                Err(e) => return Err(e.into()),
+            },
             None if change.status == "removed" => PathBuf::from(NULL_DEVICE),
             None => new,
         };
@@ -240,13 +249,13 @@ mod tests {
     /// "line one\nline changed\n"
     ///
     /// # Returns
-    /// The `(local, remote)` paths and the contents of the `local` file, when it isn't the null
-    /// device
+    /// The `(local, remote)` paths followed by the contents of the `local` and `remote` files, when
+    /// they aren't the null device
     async fn difftool_paths(
         status: &str,
         patch: &str,
         local_root: Option<PathBuf>,
-    ) -> (OsString, OsString, Option<Vec<u8>>) {
+    ) -> (OsString, OsString, Option<Vec<u8>>, Option<Vec<u8>>) {
         let temp = TempDir::default();
         let encoded = STANDARD.encode("line one\nline changed\n");
         let server = MockServer::start();
@@ -269,12 +278,13 @@ mod tests {
         let diff = Diff::new(difftool(&temp), local_root).unwrap();
         let tool = diff.difftool(change).await.unwrap();
         let original = (tool.local != NULL_DEVICE).then(|| fs::read(&tool.local).unwrap());
-        (tool.local.clone(), tool.remote.clone(), original)
+        let new = (tool.remote != NULL_DEVICE).then(|| fs::read(&tool.remote).unwrap());
+        (tool.local.clone(), tool.remote.clone(), original, new)
     }
 
     #[tokio::test]
     async fn remote_is_temp_file_without_local_root() {
-        let (_, remote, original) = difftool_paths("modified", MODIFIED, None).await;
+        let (_, remote, original, _) = difftool_paths("modified", MODIFIED, None).await;
         assert!(PathBuf::from(remote).ends_with("foo/bar/fish.ext"));
         assert_eq!(original.unwrap(), b"line one\nline two\n");
     }
@@ -287,7 +297,7 @@ mod tests {
         // Local edits shouldn't affect the original
         fs::write(&file, "line one\nlocal edit\n").unwrap();
 
-        let (_, remote, original) =
+        let (_, remote, original, _) =
             difftool_paths("modified", MODIFIED, Some(root.to_path_buf())).await;
         assert_eq!(remote, file.into_os_string());
         assert_eq!(original.unwrap(), b"line one\nline two\n");
@@ -296,7 +306,7 @@ mod tests {
     #[tokio::test]
     async fn remote_is_null_device_when_local_is_missing() {
         let root = TempDir::default();
-        let (_, remote, original) =
+        let (_, remote, original, _) =
             difftool_paths("modified", MODIFIED, Some(root.to_path_buf())).await;
         assert_eq!(remote, NULL_DEVICE);
         assert_eq!(original.unwrap(), b"line one\nline two\n");
@@ -306,16 +316,47 @@ mod tests {
     async fn remote_is_temp_file_when_local_is_a_directory() {
         let root = TempDir::default();
         fs::create_dir_all(root.join("foo/bar/fish.ext")).unwrap();
-        let (_, remote, _) = difftool_paths("modified", MODIFIED, Some(root.to_path_buf())).await;
+        let (_, remote, _, _) =
+            difftool_paths("modified", MODIFIED, Some(root.to_path_buf())).await;
         let remote = PathBuf::from(remote);
         assert!(remote.ends_with("foo/bar/fish.ext"));
         assert!(!remote.starts_with(&*root));
     }
 
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn remote_is_link_text_when_local_is_a_symlink() {
+        let root = TempDir::default();
+        let outside = TempDir::default();
+        let target = outside.join("target.txt");
+        fs::write(&target, "not the link text\n").unwrap();
+        let link = root.join("foo/bar/fish.ext");
+        fs::create_dir_all(link.parent().unwrap()).unwrap();
+        std::os::unix::fs::symlink(&target, &link).unwrap();
+
+        let (_, remote, original, new) =
+            difftool_paths("modified", MODIFIED, Some(root.to_path_buf())).await;
+        assert!(!PathBuf::from(remote).starts_with(&*root));
+        assert_eq!(new.unwrap(), target.into_os_string().into_encoded_bytes());
+        assert_eq!(original.unwrap(), b"line one\nline two\n");
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn remote_is_link_text_when_local_is_a_dangling_symlink() {
+        let root = TempDir::default();
+        let link = root.join("foo/bar/fish.ext");
+        fs::create_dir_all(link.parent().unwrap()).unwrap();
+        std::os::unix::fs::symlink("../does/not/exist", &link).unwrap();
+
+        let (_, _, _, new) = difftool_paths("modified", MODIFIED, Some(root.to_path_buf())).await;
+        assert_eq!(new.unwrap(), b"../does/not/exist");
+    }
+
     #[tokio::test]
     async fn added_file_has_null_device_original() {
         let added = "@@ -0,0 +1,2 @@\n+line one\n+line changed";
-        let (local, remote, _) = difftool_paths("added", added, None).await;
+        let (local, remote, _, _) = difftool_paths("added", added, None).await;
         assert_eq!(local, NULL_DEVICE);
         assert!(PathBuf::from(remote).ends_with("foo/bar/fish.ext"));
     }
@@ -323,7 +364,7 @@ mod tests {
     #[tokio::test]
     async fn removed_file_has_null_device_remote() {
         let removed = "@@ -1,2 +0,0 @@\n-line one\n-line changed";
-        let (_, remote, original) = difftool_paths("removed", removed, None).await;
+        let (_, remote, original, _) = difftool_paths("removed", removed, None).await;
         assert_eq!(remote, NULL_DEVICE);
         assert_eq!(original.unwrap(), b"line one\nline changed\n");
     }
@@ -336,7 +377,7 @@ mod tests {
         fs::write(&file, "recreated locally\n").unwrap();
 
         let removed = "@@ -1,2 +0,0 @@\n-line one\n-line changed";
-        let (_, remote, original) =
+        let (_, remote, original, _) =
             difftool_paths("removed", removed, Some(root.to_path_buf())).await;
         assert_eq!(remote, file.into_os_string());
         assert_eq!(original.unwrap(), b"line one\nline changed\n");
