@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [2.0.0] - 2026-11-01
+
 ### Changed
 
 - **Breaking:** When no pull request is specified, the base is diffed against the
@@ -20,7 +22,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 - Apple Intel x86_64 release builds
 
-## [1.3.0] - 2024-10-17
+## [1.3.0] - 2026-08-23
 
 ### Added
 
@@ -225,7 +227,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Initial release
 
-[unreleased]: https://github.com/speedyleion/gh-difftool/releases/tag/v1.3.0...HEAD
+[unreleased]: https://github.com/speedyleion/gh-difftool/releases/tag/v2.0.0...HEAD
+[2.0.0]: https://github.com/speedyleion/gh-difftool/releases/tag/v2.0.0
 [1.3.0]: https://github.com/speedyleion/gh-difftool/releases/tag/v1.3.0
 [1.2.3]: https://github.com/speedyleion/gh-difftool/releases/tag/v1.2.3
 [1.2.2]: https://github.com/speedyleion/gh-difftool/releases/tag/v1.2.2
