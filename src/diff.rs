@@ -67,23 +67,26 @@ impl Diff {
             "added" => PathBuf::from(NULL_DEVICE),
             _ => self.create_temp_original(&change, &new)?,
         };
-        let local = self
-            .local_root
-            .as_ref()
-            .map(|root| root.join(&change.filename));
-        let remote = match local {
-            Some(local) => match fs::symlink_metadata(&local) {
-                Ok(meta) if meta.is_symlink() => {
-                    // Like git, show a symlink as the path it points to rather than following it
-                    fs::write(&new, fs::read_link(&local)?.as_os_str().as_encoded_bytes())?;
-                    new
+        let remote = match &self.local_root {
+            Some(root) if has_symlinked_parent(root, &change.filename) => {
+                // Like git, a file under a symlinked directory isn't part of the working tree
+                PathBuf::from(NULL_DEVICE)
+            }
+            Some(root) => {
+                let local = root.join(&change.filename);
+                match fs::symlink_metadata(&local) {
+                    Ok(meta) if meta.is_symlink() => {
+                        // Like git, show a symlink as the path it points to rather than following it
+                        fs::write(&new, fs::read_link(&local)?.as_os_str().as_encoded_bytes())?;
+                        new
+                    }
+                    Ok(meta) if meta.is_file() => local,
+                    // Submodules are directories locally, so they keep the temporary file of the commit sha
+                    Ok(_) => new,
+                    Err(e) if e.kind() == io::ErrorKind::NotFound => PathBuf::from(NULL_DEVICE),
+                    Err(e) => return Err(e.into()),
                 }
-                Ok(meta) if meta.is_file() => local,
-                // Submodules are directories locally, so they keep the temporary file of the commit sha
-                Ok(_) => new,
-                Err(e) if e.kind() == io::ErrorKind::NotFound => PathBuf::from(NULL_DEVICE),
-                Err(e) => return Err(e.into()),
-            },
+            }
             None if change.status == "removed" => PathBuf::from(NULL_DEVICE),
             None => new,
         };
@@ -122,6 +125,16 @@ impl Diff {
         change.reverse_apply(new, &file)?;
         Ok(file)
     }
+}
+
+/// Whether any of the directories of `filename`, below `root`, is a symlink
+fn has_symlinked_parent(root: &Path, filename: impl AsRef<Path>) -> bool {
+    filename
+        .as_ref()
+        .ancestors()
+        .skip(1)
+        .filter(|dir| !dir.as_os_str().is_empty())
+        .any(|dir| fs::symlink_metadata(root.join(dir)).is_ok_and(|meta| meta.is_symlink()))
 }
 
 #[cfg(test)]
@@ -351,6 +364,22 @@ mod tests {
 
         let (_, _, _, new) = difftool_paths("modified", MODIFIED, Some(root.to_path_buf())).await;
         assert_eq!(new.unwrap(), b"../does/not/exist");
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn remote_is_null_device_when_a_parent_is_a_symlink() {
+        let root = TempDir::default();
+        let outside = TempDir::default();
+        fs::create_dir_all(outside.join("bar")).unwrap();
+        fs::write(outside.join("bar/fish.ext"), "line one\nline changed\n").unwrap();
+        // The grandparent, so checking only the immediate parent isn't enough
+        std::os::unix::fs::symlink(&*outside, root.join("foo")).unwrap();
+
+        let (_, remote, original, _) =
+            difftool_paths("modified", MODIFIED, Some(root.to_path_buf())).await;
+        assert_eq!(remote, NULL_DEVICE);
+        assert_eq!(original.unwrap(), b"line one\nline two\n");
     }
 
     #[tokio::test]
