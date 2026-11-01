@@ -8,5 +8,9 @@
       matchManagers: ['cargo'],
       minimumReleaseAge: '14 days',
     },
+    {
+      matchManagers: ['github-actions'],
+      minimumReleaseAge: '14 days',
+    },
   ],
 }
