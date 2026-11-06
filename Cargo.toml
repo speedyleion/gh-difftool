@@ -23,7 +23,7 @@ diffy = "0.5"
 
 [dev-dependencies]
 assert_cmd = "2"
-httpmock = "0.8"
+httpmock = "0.9"
 temp_testdir = "0.2"
 textwrap = "0.16"
 yare = "3"
