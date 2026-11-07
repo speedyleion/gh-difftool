@@ -58,7 +58,12 @@ impl Difftool {
         Ok(Self { tool, command_args })
     }
 
-    pub async fn launch(&self, local: impl AsRef<OsStr>, remote: impl AsRef<OsStr>) -> Result<()> {
+    pub async fn launch(
+        &self,
+        local: impl AsRef<OsStr>,
+        remote: impl AsRef<OsStr>,
+        merged: impl AsRef<OsStr>,
+    ) -> Result<()> {
         let (program, args) = self
             .command_args
             .split_first()
@@ -66,20 +71,21 @@ impl Difftool {
         let mut command = Command::new(program);
 
         // We set the environment variables in case the preferred difftool uses them directly
-        command.envs([("LOCAL", local.as_ref()), ("REMOTE", remote.as_ref())]);
+        command.envs([
+            ("LOCAL", local.as_ref()),
+            ("REMOTE", remote.as_ref()),
+            ("MERGED", merged.as_ref()),
+        ]);
 
         for arg in args {
             // We replace the environment variables with the local and remote
             // paths because Command is not a shell so will not expand them
-            let arg = match arg.as_ref() {
-                "$LOCAL" => local.as_ref(),
-                "$REMOTE" => remote.as_ref(),
-                _ => {
-                    command.arg(arg);
-                    continue;
-                }
-            };
-            command.arg(arg);
+            command.arg(replace_variable(
+                arg,
+                local.as_ref(),
+                remote.as_ref(),
+                merged.as_ref(),
+            ));
         }
 
         // In order to work with terminal diff tools like vimdiff we need to
@@ -90,6 +96,20 @@ impl Difftool {
         // Some difftools, like bcompare, will return non zero status when there is a diff and 0
         // only when there are no changes.  This prevents us from trusting the status
         Ok(())
+    }
+}
+
+fn replace_variable<'a>(
+    arg: &'a str,
+    local: &'a OsStr,
+    remote: &'a OsStr,
+    merged: &'a OsStr,
+) -> &'a OsStr {
+    match arg {
+        "$LOCAL" => local,
+        "$REMOTE" => remote,
+        "$MERGED" => merged,
+        _ => OsStr::new(arg),
     }
 }
 
@@ -381,6 +401,19 @@ mod tests {
                 "--middle-arg".into(),
                 "$REMOTE".into()
             ]
+        );
+    }
+
+    #[test]
+    fn replaces_merged_variable_with_repository_relative_path() {
+        let local = OsStr::new("/tmp/local");
+        let remote = OsStr::new("/tmp/remote");
+        let merged = OsStr::new("src/main.rs");
+
+        assert_eq!(replace_variable("$MERGED", local, remote, merged), merged);
+        assert_eq!(
+            replace_variable("--merged=$MERGED", local, remote, merged),
+            OsStr::new("--merged=$MERGED")
         );
     }
 }

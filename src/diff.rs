@@ -33,19 +33,28 @@ pub struct Difftool<'a> {
     tool: &'a git_config::Difftool,
     local: OsString,
     remote: OsString,
+    merged: OsString,
 }
 
 impl<'a> Difftool<'a> {
-    fn new(tool: &'a git_config::Difftool, local: OsString, remote: OsString) -> Self {
+    fn new(
+        tool: &'a git_config::Difftool,
+        local: OsString,
+        remote: OsString,
+        merged: OsString,
+    ) -> Self {
         Self {
             tool,
             local,
             remote,
+            merged,
         }
     }
 
     pub async fn launch(&self) -> Result<()> {
-        self.tool.launch(&self.local, &self.remote).await
+        self.tool
+            .launch(&self.local, &self.remote, &self.merged)
+            .await
     }
 }
 
@@ -94,6 +103,7 @@ impl Diff {
             &self.difftool,
             original.into_os_string(),
             remote.into_os_string(),
+            OsString::from(&change.filename),
         ))
     }
 
