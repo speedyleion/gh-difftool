@@ -35,6 +35,8 @@ pub enum Error {
     NoDifftoolConfigured,
     /// Unknown difftool {0}
     UnknownDifftool(String),
+    /// Difftool {0} exited with unexpected status {1}
+    UnexpectedExitCode(String, i32),
 }
 
 impl std::error::Error for Error {}
@@ -44,6 +46,14 @@ impl std::error::Error for Error {}
 pub struct Difftool {
     tool: String,
     command_args: Vec<String>,
+    exit_codes: ExitCodes,
+}
+
+#[derive(Debug, Eq, PartialEq, Default)]
+enum ExitCodes {
+    #[default]
+    Ignore,
+    Expected(Vec<i64>),
 }
 
 impl Difftool {
@@ -54,8 +64,13 @@ impl Difftool {
         };
 
         let command_args = get_command_args(&git_dir, &tool)?;
+        let exit_codes = get_exit_codes(&git_dir, &tool)?;
 
-        Ok(Self { tool, command_args })
+        Ok(Self {
+            tool,
+            command_args,
+            exit_codes,
+        })
     }
 
     pub async fn launch(
@@ -91,10 +106,19 @@ impl Difftool {
         // In order to work with terminal diff tools like vimdiff we need to
         // spawn the process instead of using Command::output
         let mut child = command.spawn()?;
-        let _ = child.wait().await?;
+        let status = child.wait().await?;
 
         // Some difftools, like bcompare, will return non zero status when there is a diff and 0
         // only when there are no changes.  This prevents us from trusting the status
+        if let ExitCodes::Expected(expected) = &self.exit_codes
+            && status
+                .code()
+                .is_none_or(|code| !expected.contains(&(code as i64)))
+        {
+            return Err(
+                Error::UnexpectedExitCode(self.tool.clone(), status.code().unwrap_or(-1)).into(),
+            );
+        }
         Ok(())
     }
 }
@@ -127,6 +151,24 @@ fn get_command_args(git_dir: &impl AsRef<Path>, name: impl AsRef<str>) -> Result
     }
     let program = get_difftool_program(git_dir, name)?;
     Ok(vec![program, "$LOCAL".into(), "$REMOTE".into()])
+}
+
+fn get_exit_codes(git_dir: &impl AsRef<Path>, name: &str) -> Result<ExitCodes> {
+    let config = git_config(git_dir)?;
+    let expected = config.integers_by("difftool", Some(name.into()), "expectedExitCode")?;
+    if let Some(expected) = expected {
+        return Ok(ExitCodes::Expected(expected));
+    }
+
+    let trusted = config
+        .boolean_by("difftool", Some(name.into()), "trustExitCode")?
+        .or(config.boolean_by("difftool", None, "trustExitCode")?)
+        .unwrap_or(false);
+    Ok(if trusted {
+        ExitCodes::Expected(vec![0])
+    } else {
+        ExitCodes::Ignore
+    })
 }
 
 fn get_difftool_program(git_dir: impl AsRef<Path>, name: impl AsRef<str>) -> Result<String> {
@@ -376,6 +418,7 @@ mod tests {
                     "$LOCAL".to_string(),
                     "$REMOTE".to_string()
                 ],
+                exit_codes: ExitCodes::Ignore,
             }
         );
     }
@@ -402,6 +445,39 @@ mod tests {
                 "$REMOTE".into()
             ]
         );
+    }
+
+    #[test]
+    fn exit_codes_support_trust_and_repeated_expected_values() {
+        let temp = TempDir::default().permanent();
+        let git_dir = temp.join(".git");
+        fs::create_dir_all(&git_dir).unwrap();
+        fs::write(
+            git_dir.join("config"),
+            "[difftool]\n    trustExitCode = true\n[difftool \"custom\"]\n    expectedExitCode = 0\n    expectedExitCode = 2",
+        )
+        .unwrap();
+
+        assert_eq!(
+            get_exit_codes(&temp, "other").unwrap(),
+            ExitCodes::Expected(vec![0])
+        );
+        assert_eq!(
+            get_exit_codes(&temp, "custom").unwrap(),
+            ExitCodes::Expected(vec![0, 2])
+        );
+    }
+
+    #[cfg(unix)]
+    #[tokio::test]
+    async fn trusted_unexpected_exit_code_is_an_error() {
+        let tool = Difftool {
+            tool: "custom".into(),
+            command_args: vec!["sh".into(), "-c".into(), "exit 2".into()],
+            exit_codes: ExitCodes::Expected(vec![0, 1]),
+        };
+
+        assert!(tool.launch("local", "remote", "merged").await.is_err());
     }
 
     #[test]

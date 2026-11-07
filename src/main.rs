@@ -177,6 +177,11 @@ async fn diff(diff: Diff, change_set: ChangeSet) -> Result<()> {
                     // with no context isn't nice, but it's better than not
                     // getting the errors.
                     if let Err(error) = result {
+                        if error.downcast_ref::<git_config::Error>().is_some_and(|error| {
+                            matches!(error, git_config::Error::UnexpectedExitCode(..))
+                        }) {
+                            return Err(error);
+                        }
                         println!("{error:?}");
                     }
 
