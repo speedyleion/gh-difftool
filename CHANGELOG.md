@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Support for the `$MERGED` variable in configured difftool commands. It is
+  replaced with the changed file's path relative to the repository root.
+
 ## [2.0.0] - 2026-11-01
 
 ### Changed

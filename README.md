@@ -130,7 +130,12 @@ use the `difftool.<tool>.cmd` option.
 ```
 
 The `$LOCAL` and `$REMOTE` variables will be replaced with the paths to the
-base and pull request versions of the files.
+base and pull request versions of the files. The `$MERGED` variable will be
+replaced with the path to the changed file relative to the repository root,
+matching Git's `difftool.<tool>.cmd` behavior.
+
+The `LOCAL`, `REMOTE`, and `MERGED` environment variables are also set for the
+difftool command.
 
 Unlike the standard git difftool, the
 [`difftool.<tool>.cmd`](https://git-scm.com/docs/git-difftool#Documentation/git-difftool.txt-difftoollttoolgtcmd)
@@ -138,8 +143,8 @@ used with `gh-difftool` will *not* be run in a shell.
 
 This means:
 
-- Only the `$LOCAL` and `$REMOTE` variables will be replaced.
-- the `$LOCAL` and `$REMOTE` variables need to be space separated.
+- Only the `$LOCAL`, `$REMOTE`, and `$MERGED` variables will be replaced.
+- The `$LOCAL`, `$REMOTE`, and `$MERGED` variables need to be space separated.
   Use `--local $LOCAL`, not `--local=$LOCAL`.
 
 ## Requires
