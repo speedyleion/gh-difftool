@@ -110,17 +110,14 @@ impl Difftool {
 
         // Some difftools, like bcompare, will return non zero status when there is a diff and 0
         // only when there are no changes.  This prevents us from trusting the status
-        if let ExitCodes::Expected(expected) = &self.exit_codes {
-            if status
+        if let ExitCodes::Expected(expected) = &self.exit_codes
+            && status
                 .code()
                 .is_none_or(|code| !expected.contains(&(code as i64)))
-            {
-                return Err(Error::UnexpectedExitCode(
-                    self.tool.clone(),
-                    status.code().unwrap_or(-1),
-                )
-                .into());
-            }
+        {
+            return Err(
+                Error::UnexpectedExitCode(self.tool.clone(), status.code().unwrap_or(-1)).into(),
+            );
         }
         Ok(())
     }
