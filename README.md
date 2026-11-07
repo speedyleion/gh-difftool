@@ -106,8 +106,22 @@ There are a handful of known difftools available in `gh-difftool`, (bc, bc3,
 bc4, meld, gvimdiff). These known tools assume that the executable is available
 in the `PATH`.
 
-> Note: `gh-difftool` does *not* support the `difftool.trustExitCode` git
-> config option. Exit codes are not trusted.
+Exit codes are ignored by default, matching the behavior of difftools such as
+Beyond Compare that use a non-zero status to indicate that differences were
+found. Set `difftool.trustExitCode = true` to accept only status `0`.
+
+Tools with additional successful statuses can repeat the
+`difftool.<tool>.expectedExitCode` setting:
+
+```ini
+[difftool "sometool"]
+    expectedExitCode = 0
+    expectedExitCode = 1
+    expectedExitCode = 2
+```
+
+When configured, these statuses are trusted and any other status stops
+processing.
 
 ### Tool Path
 
